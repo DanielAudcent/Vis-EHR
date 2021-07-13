@@ -4,6 +4,14 @@ MSc Dissertation project - Interactive geospatial visualisation of COVID-related
 The repository shall be used as a version control during the implementation stage of this MSc Dissertation project.
 This project will be submitted in partial fulfillment of the conditions for the award of the degree: MSc Data Science
 
+### Shapefiles
+
+* England / Scotland (Scraped at MSOA level)
+https://coronavirus.data.gov.uk/details/interactive-map/cases
+
+* Wales (MSOA file download):
+https://lle.gov.wales/catalogue/item/MiddleLayerSuperOutputAreasMSOA/?lang=en
+
 ### MSOA / Intermediate zone codes and names:
 
 * England / Wales (MSOA):
