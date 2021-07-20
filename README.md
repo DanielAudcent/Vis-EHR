@@ -6,8 +6,11 @@ This project will be submitted in partial fulfillment of the conditions for the 
 
 ### Shapefiles
 
-* England / Scotland (Scraped at MSOA level)
+* England (Scraped at MSOA level)
 https://coronavirus.data.gov.uk/details/interactive-map/cases
+
+* Scotland (Intermediate zones)
+https://data.gov.uk/dataset/133d4983-c57d-4ded-bc59-390c962ea280/intermediate-zone-boundaries-2011
 
 * Wales (MSOA file download):
 https://lle.gov.wales/catalogue/item/MiddleLayerSuperOutputAreasMSOA/?lang=en
