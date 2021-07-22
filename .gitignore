@@ -1,3 +1,7 @@
 *.html
 *.mov
 .DS_Store
+*.json
+node_modules/
+*.geojson
+.DS_Store
