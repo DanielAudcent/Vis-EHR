@@ -1,21 +1,20 @@
 <template>
-<!-- html code goes here -->
+  <!-- html code goes here -->
   <div id="app">
-    <Shapefile>
-    </Shapefile>
+    <Shapefile> </Shapefile>
   </div>
 </template>
 
 <script>
 // js code goes here
-import Shapefile from './components/Shapefile.vue'
- 
+import Shapefile from "./components/Shapefile.vue";
+
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    Shapefile
-  }
-}
+    Shapefile,
+  },
+};
 </script>
 
 <style>
