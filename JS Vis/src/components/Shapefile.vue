@@ -11,13 +11,7 @@ export default {
   name: "Shapefile",
   methods: {
     async init() {
-      const shapefile_dat = await d3
-        .json("/data/Simplified_visdata.json")
-        // .json(".data/Simplified_visdata.json")
-        .then(function (data, error) {
-          console.log(data, error);
-          console.log("error:", error);
-        });
+      const shapefile_dat = await d3.json("/data/Simplified_visdata.json");
 
       d3.selectAll("#map > svg").remove();
 
@@ -25,7 +19,7 @@ export default {
         .select("#map")
         .append("svg")
         .attr("code", "MSOA")
-        .attr("viewBox", [0, 0, 800, 400])
+        .attr("viewBox", [screen.width * (2 / 5), 0, 800, 900])
         .attr("stroke-linejoin", "round")
         .attr("stroke-linecap", "round");
 
@@ -34,7 +28,7 @@ export default {
           .zoom()
           .extent([
             [0, 0],
-            [800, 400],
+            [1000, 1000],
           ])
           .scaleExtent([1, 6])
           .on("zoom", zoomed)
@@ -47,23 +41,33 @@ export default {
       const path = d3.geoPath();
 
       const list = [];
+      console.log(shapefile_dat.objects.Visualisation_data);
 
       list.push(
         ...topo
-          .feature(shapefile_dat, shapefile_dat.features)
-          .filter((e) => e.geometry && e.geometry.type)
+          .feature(shapefile_dat, shapefile_dat.objects.Visualisation_data)
+          .features.filter((e) => e.geometry && e.geometry.type)
       );
+
+      const max_rate = d3.max(
+        list.map((row) => {
+          return row.properties.Case_rate;
+        })
+      );
+
+      const colorscale = d3.scaleSequential(d3.interpolateOrRd);
 
       svg
         .append("g")
         .attr("class", "MSOA")
         .attr("stroke", "#000")
+        .style("stroke-width", 0.15)
         .selectAll("path")
         .data(list)
         .join("path")
         .attr("vector-effect", "non-scaling-stroke")
         .attr("d", path)
-        .attr("fill", "none")
+        .attr("fill", (d) => colorscale(d.properties.Case_rate / max_rate))
         .attr("code", (d) => d.properties.code);
     },
   },
