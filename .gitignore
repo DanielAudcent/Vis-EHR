@@ -1,7 +1,7 @@
 *.html
 *.mov
 .DS_Store
-*.json
+Visualisation_data_test.json
 node_modules/
 *.geojson
 .DS_Store
