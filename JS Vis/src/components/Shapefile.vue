@@ -1,52 +1,74 @@
 <template>
-  <!-- html code goes here -->
-  <div class="container-fluid" style="col">
-    <div class="left">
-      <div id="map"></div>
-    </div>
-    <div class="right">
-      <div id="buttons" class="btn-group-vertical">
-        <b-button
-          id="button1"
-          class="mb-3"
-          squared
-          v-on:click="init()"
-          variant="outline-light"
-          size="lg"
-        >
-          Reset
-        </b-button>
-        <b-button
-          id="button2"
-          class="mb-3"
-          squared
-          variant="outline-light"
-          size="lg"
-        >
-          button2
-        </b-button>
+  <div class="container-fluid">
+    <div class="row row-eq-height">
+      <div class="col-3">LHS Panel <br /><br /></div>
+      <div class="col-6">
+        Map <br /><br />
+        <div id="map"></div>
+        <div id="map-legend"></div>
+        <div id="slider">
+          <vue-range-slider
+            v-model="value"
+            class="centered"
+            min="0"
+            max="1.8"
+            step="0.1"
+            dotSize="15"
+            width="600px"
+            lazy="True"
+          ></vue-range-slider>
+        </div>
+      </div>
+      <div class="col-2">
+        Options <br /><br />
+        <div id="buttons" class="btn-group-vertical">
+          <b-button
+            id="button1"
+            class="mb-3"
+            squared
+            v-on:click="init()"
+            variant="outline-light"
+            size="lg"
+          >
+            <span style="font-size: smaller">Reset</span>
+          </b-button>
+          <b-button
+            id="button2"
+            class="mb-3"
+            squared
+            variant="outline-light"
+            size="lg"
+          >
+            <span style="font-size: smaller">Center</span>
+          </b-button>
+        </div>
       </div>
     </div>
-    <div class="clear"></div>
   </div>
 </template>
 
 <script>
 import * as d3 from "d3";
 import * as topo from "topojson-client";
+import "vue-range-component/dist/vue-range-slider.css";
+import VueRangeSlider from "vue-range-component";
 
 export default {
   name: "Shapefile",
+  components: { VueRangeSlider },
   methods: {
     async init() {
       const shapefile_dat = await d3.json("/data/Simplified_visdata.json");
 
+      //Reset to default settings
       d3.selectAll("#map > svg").remove();
+      d3.selectAll("#map-legend > svg").remove();
+      document.getElementById("slider").value = [0, 1.8];
 
       const svg = d3
         .select("#map")
         .append("svg")
-        .attr("viewBox", [screen.width * (2 / 5), 0, 800, 900])
+        .attr("viewBox", [screen.width * (2 / 5), 0, 800, 600])
         .attr("stroke-linejoin", "round")
         .attr("stroke-linecap", "round");
 
@@ -54,8 +76,8 @@ export default {
         d3
           .zoom()
           .extent([
-            [screen.width * (2 / 5), 0],
-            [800, 900],
+            [0, 0],
+            [800, 600],
           ])
           .scaleExtent([1, 10])
           .on("zoom", zoomed)
@@ -73,6 +95,16 @@ export default {
         .style("z-index", "10")
         .attr("class", "tooltip");
 
+      var legend = d3
+        .select("#map-legend")
+        .append("svg")
+        .attr("x", screen.width * (2 / 5))
+        .attr("y", 700)
+        .attr("height", 100)
+        .attr("width", 600);
+
+      var defs = legend.append("defs");
+
       const path = d3.geoPath();
 
       const list = [];
@@ -83,14 +115,38 @@ export default {
           .features.filter((e) => e.geometry && e.geometry.type)
       );
 
+      // Color scheme for MSOA regions
+      const colorscale = d3.scaleSequential(d3.interpolateOrRd);
+
       const max_rate = d3.max(
         list.map((row) => {
           return row.properties.Case_rate;
         })
       );
 
-      const colorscale = d3.scaleSequential(d3.interpolateOrRd);
+      const NA_cases = Number(
+        d3.mean(
+          list.map((row) => {
+            return row.properties.Cases;
+          })
+        )
+      ).toFixed(0);
 
+      const NA_case_rate = Number(
+        d3.mean(
+          list.map((row) => {
+            return row.properties.Case_rate;
+          })
+        ) * 100
+      ).toFixed(2);
+
+      //div for Slider on case rate
+      d3.select("#slider")
+        .attr("x", screen.width * (2 / 5))
+        .attr("width", 600)
+        .attr("height", 100);
+
+      // Map data and tools
       svg
         .append("g")
         .attr("class", "MSOA")
@@ -105,13 +161,57 @@ export default {
         .attr("code", (d) => d.properties.code)
         .attr("areaname", (d) => d.properties.areaName)
         .attr("population", (d) => d.properties.pop_count)
-        .attr("cases", (d) => d.properties.Cases)
-        .attr("case_rate", (d) => {
-          d.properties.Case_rate * 100;
+        .attr("cases", (d) => Number(d.properties.Cases))
+        .attr("case_rate", (d) =>
+          Number(d.properties.Case_rate * 100).toFixed(2)
+        )
+        .attr("NA_ind", (d) => {
+          if (d.properties.Cases > NA_cases) {
+            return (
+              "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='Black' class='bi bi-caret-up-fill' viewBox='0 0 16 16'>" +
+              "<path d='m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/>" +
+              "</svg>"
+            );
+          } else if (d.properties.Cases < NA_cases) {
+            return (
+              "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='Black' class='bi bi-caret-down-fill' viewBox='0 0 16 16'>" +
+              "<path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/>" +
+              "</svg>"
+            );
+          } else {
+            return (
+              "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='Black' class='bi bi-dash' viewBox='0 0 16 16'>" +
+              "<path d='M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z'/>" +
+              "</svg>"
+            );
+          }
+        })
+        .attr("NA_ind_pct", (d) => {
+          if (Number(d.properties.Case_rate * 100).toFixed(2) > NA_case_rate) {
+            return (
+              "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='Black' class='bi bi-caret-up-fill' viewBox='0 0 16 16'>" +
+              "<path d='m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/>" +
+              "</svg>"
+            );
+          } else if (
+            Number(d.properties.Case_rate * 100).toFixed(2) < NA_case_rate
+          ) {
+            return (
+              "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='Black' class='bi bi-caret-down-fill' viewBox='0 0 16 16'>" +
+              "<path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/>" +
+              "</svg>"
+            );
+          } else {
+            return (
+              "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='Black' class='bi bi-dash' viewBox='0 0 16 16'>" +
+              "<path d='M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z'/>" +
+              "</svg>"
+            );
+          }
         })
         .on("mouseover", function () {
           d3.select(this).attr("stroke-width", 2);
-          console.log(d3.select(this).attr("population"));
+          console.log(d3.select(this).attr("NA_ind"));
           tooltip
             .style("visibility", "visible")
             .html(
@@ -120,25 +220,107 @@ export default {
                 d3.select(this).attr("population") +
                 "<br/>Cases: " +
                 d3.select(this).attr("cases") +
-                "<br/> Case Rate: " +
+                d3.select(this).attr("NA_ind") +
+                "<br/> Case pct: " +
                 d3.select(this).attr("case_rate") +
-                "%"
+                "%" +
+                d3.select(this).attr("NA_ind_pct")
             );
         })
         .on("mousemove", function (e) {
           return tooltip
             .style("top", e.pageY - 20 + "px")
-            .style("left", e.pageX + 20 + "px");
+            .style("left", e.pageX - 325 + "px");
         })
         .on("mouseout", function () {
           d3.select(this).attr("stroke-width", 0.15);
           tooltip.style("visibility", "hidden");
         });
+
+      // Add Legend
+      var colorscale_linear = d3
+        .scaleLinear()
+        .domain([0.0, 0.35, 0.7, 1.05, 1.4, 1.75]);
+
+      var linearGradient = defs
+        .append("linearGradient")
+        .attr("id", "linear-gradient");
+
+      linearGradient
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "100%")
+        .attr("y2", "0%");
+
+      linearGradient
+        .selectAll("stop")
+        .data([
+          {
+            offset: "0%",
+            color: d3.interpolateOrRd(0),
+          },
+          {
+            offset: "20%",
+            color: d3.interpolateOrRd(0.2),
+          },
+          {
+            offset: "40%",
+            color: d3.interpolateOrRd(0.4),
+          },
+          {
+            offset: "60%",
+            color: d3.interpolateOrRd(0.6),
+          },
+          {
+            offset: "80%",
+            color: d3.interpolateOrRd(0.8),
+          },
+          {
+            offset: "100%",
+            color: d3.interpolateOrRd(1),
+          },
+        ])
+        .enter()
+        .append("stop")
+        .attr("offset", function (d) {
+          return d.offset;
+        })
+        .attr("stop-color", function (d) {
+          return d.color;
+        });
+
+      var xLeg = d3.scaleLinear().domain([0, 1.75]).range([10, 590]);
+
+      var axisLeg = d3.axisBottom(xLeg).tickValues(colorscale_linear.domain());
+
+      legend
+        .append("rect")
+        .attr("x", 0)
+        .attr("y", 50)
+        .attr("width", 600)
+        .attr("height", 20)
+        .style("fill", "url(#linear-gradient)");
+
+      legend
+        .append("text")
+        .attr("x", 300)
+        .attr("y", 30)
+        .style("text-anchor", "middle")
+        .style("font", "Avenir")
+        .style("font-size", "12pt")
+        .text("Case rate");
+
+      legend
+        .attr("class", "axis")
+        .append("g")
+        .attr("transform", "translate(0,70)")
+        .call(axisLeg);
     },
   },
   data() {
     return {
       MSOA: { visibility: true, color: "dark" },
+      value: [0, 1.8],
     };
   },
   async mounted() {
@@ -146,8 +328,7 @@ export default {
   },
 };
 </script>
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
+<style>
 h3 {
   margin: 40px 0 0;
 }
@@ -162,31 +343,12 @@ li {
 a {
   color: #42b983;
 }
-.left {
-  float: left;
-  left: 0;
-  width: 70%;
-  height: 1000px;
-  background-color: rgb(133, 149, 165);
-  margin: 30px;
-}
-.right {
-  float: right;
-  right: 0;
-  width: 20%;
-  height: 1000px;
-  background-color: rgb(133, 149, 165);
-  margin: 30px;
-}
 .centered {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-}
-.clear {
-  clear: both;
 }
 .tooltip {
   padding: 7px;
@@ -195,5 +357,19 @@ a {
   border-style: solid;
   border-radius: 2px;
   opacity: 10 !important;
+}
+.container-fluid {
+  min-height: 100%;
+}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: none;
+  shape-rendering: crispEdges;
+}
+.axis text {
+  font-family: Avenir;
+  fill: #000;
+  font-size: 9pt;
 }
 </style>
