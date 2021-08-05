@@ -8,14 +8,14 @@
         <div id="map-legend"></div>
         <div id="slider">
           <vue-range-slider
-            v-model="value"
+            v-model="range"
             class="centered"
             min="0"
             max="1.8"
             step="0.1"
             dotSize="15"
             width="600px"
-            lazy="True"
+            v-on:change="init()"
           ></vue-range-slider>
         </div>
       </div>
@@ -25,9 +25,9 @@
           <b-button
             id="button1"
             class="mb-3"
-            squared
+            pill
             v-on:click="init()"
-            variant="outline-light"
+            variant="outline-dark"
             size="lg"
           >
             <span style="font-size: smaller">Reset</span>
@@ -35,8 +35,9 @@
           <b-button
             id="button2"
             class="mb-3"
-            squared
-            variant="outline-light"
+            pill
+            v-on:click="centersvg()"
+            variant="outline-dark"
             size="lg"
           >
             <span style="font-size: smaller">Center</span>
@@ -60,15 +61,17 @@ export default {
     async init() {
       const shapefile_dat = await d3.json("/data/Simplified_visdata.json");
 
-      //Reset to default settings
+      //Reset to default
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
-      document.getElementById("slider").value = [0, 1.8];
+
+      const width = 800;
+      const height = 600;
 
       const svg = d3
         .select("#map")
         .append("svg")
-        .attr("viewBox", [screen.width * (2 / 5), 0, 800, 600])
+        .attr("viewBox", [screen.width * (2 / 5), 0, width, height])
         .attr("stroke-linejoin", "round")
         .attr("stroke-linecap", "round");
 
@@ -77,7 +80,7 @@ export default {
           .zoom()
           .extent([
             [0, 0],
-            [800, 600],
+            [width, height],
           ])
           .scaleExtent([1, 10])
           .on("zoom", zoomed)
@@ -86,6 +89,30 @@ export default {
       function zoomed({ transform }) {
         svg.attr("transform", transform);
       }
+
+      // function centersvg(xpos, ypos) {
+      //   svg
+      //     .transition()
+      //     .duration(500)
+      //     .attr(
+      //       "transform",
+      //       "translate(" +
+      //         (width / 2 - xpos) +
+      //         "," +
+      //         (height / 2 - ypos) +
+      //         ")scale(" +
+      //         1 +
+      //         ")"
+      //     )
+      //     .on("end", function () {
+      //       zoomer.call(
+      //         zoom.transform,
+      //         d3.zoomIdentity
+      //           .translate(width / 2 - xpos, height / 2 - ypos)
+      //           .scale(1)
+      //       );
+      //     });
+      // }
 
       const tooltip = d3
         .select("#map")
@@ -140,11 +167,50 @@ export default {
         ) * 100
       ).toFixed(2);
 
-      //div for Slider on case rate
+      //Slider on case rate
       d3.select("#slider")
         .attr("x", screen.width * (2 / 5))
         .attr("width", 600)
         .attr("height", 100);
+
+      function mouseout() {
+        tooltip.style("visibility", "hidden");
+        d3.select(this).style("stroke-width", 0.15);
+      }
+
+      function mousemove(e) {
+        return tooltip
+          .style("top", e.pageY - 20 + "px")
+          .style("left", e.pageX - 325 + "px");
+      }
+
+      function mouseover() {
+        d3.select(this).style("stroke-width", 2);
+        tooltip
+          .style("visibility", "visible")
+          .html(
+            d3.select(this).attr("areaname") +
+              "<br/>Population: " +
+              d3.select(this).attr("population") +
+              "<br/>Cases: " +
+              d3.select(this).attr("cases") +
+              d3.select(this).attr("NA_ind") +
+              "<br/> Case pct: " +
+              d3.select(this).attr("case_rate") +
+              "%" +
+              d3.select(this).attr("NA_ind_pct")
+          );
+      }
+
+      function clickaction() {
+        if (d3.select(this).attr("click-indicator") == false) {
+          d3.select(this).attr("click-indicator", true).on("mouseout", null);
+        } else {
+          d3.select(this)
+            .attr("click-indicator", false)
+            .on("mouseout", mouseout);
+        }
+      }
 
       // Map data and tools
       svg
@@ -157,7 +223,16 @@ export default {
         .join("path")
         .attr("vector-effect", "non-scaling-stroke")
         .attr("d", path)
-        .attr("fill", (d) => colorscale(d.properties.Case_rate / max_rate))
+        .attr("fill", (d) => {
+          if (
+            d.properties.Case_rate * 100 >= this.range[0] &&
+            d.properties.Case_rate * 100 <= this.range[1]
+          ) {
+            return colorscale(d.properties.Case_rate / max_rate);
+          } else {
+            return "none";
+          }
+        })
         .attr("code", (d) => d.properties.code)
         .attr("areaname", (d) => d.properties.areaName)
         .attr("population", (d) => d.properties.pop_count)
@@ -165,6 +240,11 @@ export default {
         .attr("case_rate", (d) =>
           Number(d.properties.Case_rate * 100).toFixed(2)
         )
+        .attr("click-indicator", false)
+        .on("mouseover", mouseover)
+        .on("mousemove", mousemove)
+        .on("mouseout", mouseout)
+        .on("click", clickaction)
         .attr("NA_ind", (d) => {
           if (d.properties.Cases > NA_cases) {
             return (
@@ -208,33 +288,6 @@ export default {
               "</svg>"
             );
           }
-        })
-        .on("mouseover", function () {
-          d3.select(this).attr("stroke-width", 2);
-          console.log(d3.select(this).attr("NA_ind"));
-          tooltip
-            .style("visibility", "visible")
-            .html(
-              d3.select(this).attr("areaname") +
-                "<br/>Population: " +
-                d3.select(this).attr("population") +
-                "<br/>Cases: " +
-                d3.select(this).attr("cases") +
-                d3.select(this).attr("NA_ind") +
-                "<br/> Case pct: " +
-                d3.select(this).attr("case_rate") +
-                "%" +
-                d3.select(this).attr("NA_ind_pct")
-            );
-        })
-        .on("mousemove", function (e) {
-          return tooltip
-            .style("top", e.pageY - 20 + "px")
-            .style("left", e.pageX - 325 + "px");
-        })
-        .on("mouseout", function () {
-          d3.select(this).attr("stroke-width", 0.15);
-          tooltip.style("visibility", "hidden");
         });
 
       // Add Legend
@@ -319,8 +372,8 @@ export default {
   },
   data() {
     return {
+      range: [0, 1.8],
       MSOA: { visibility: true, color: "dark" },
-      value: [0, 1.8],
     };
   },
   async mounted() {
