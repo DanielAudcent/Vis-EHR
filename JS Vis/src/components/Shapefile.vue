@@ -4,18 +4,17 @@
       <div class="col-3">LHS Panel <br /><br /></div>
       <div class="col-6">
         Map <br /><br />
-        <div id="map"></div>
-        <div id="map-legend"></div>
-        <div id="slider">
+        <div id="map" style="z-index: 10"></div>
+        <div id="map-legend" style="z-index: 1"></div>
+        <div id="slider" style="z-index: 1">
           <vue-range-slider
             v-model="range"
             class="centered"
-            min="0"
+            min="0.0"
             max="1.8"
             step="0.1"
             dotSize="15"
             width="600px"
-            v-on:change="init()"
           ></vue-range-slider>
         </div>
       </div>
@@ -30,17 +29,16 @@
             variant="outline-dark"
             size="lg"
           >
-            <span style="font-size: smaller">Reset</span>
+            <span style="font-size: smaller">Reset zoom</span>
           </b-button>
           <b-button
             id="button2"
             class="mb-3"
             pill
-            v-on:click="centersvg()"
             variant="outline-dark"
             size="lg"
           >
-            <span style="font-size: smaller">Center</span>
+            <span style="font-size: smaller">Button2</span>
           </b-button>
         </div>
       </div>
@@ -59,19 +57,22 @@ export default {
   components: { VueRangeSlider },
   methods: {
     async init() {
+      const glob = this;
       const shapefile_dat = await d3.json("/data/Simplified_visdata.json");
+
+      glob.shape_data = shapefile_dat;
 
       //Reset to default
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
 
-      const width = 800;
-      const height = 600;
+      glob.width = 800;
+      glob.height = 600;
 
       const svg = d3
         .select("#map")
         .append("svg")
-        .attr("viewBox", [screen.width * (2 / 5), 0, width, height])
+        .attr("viewBox", [screen.width * (2 / 5), 0, glob.width, glob.height])
         .attr("stroke-linejoin", "round")
         .attr("stroke-linecap", "round");
 
@@ -80,7 +81,7 @@ export default {
           .zoom()
           .extent([
             [0, 0],
-            [width, height],
+            [glob.width, glob.height],
           ])
           .scaleExtent([1, 10])
           .on("zoom", zoomed)
@@ -89,30 +90,6 @@ export default {
       function zoomed({ transform }) {
         svg.attr("transform", transform);
       }
-
-      // function centersvg(xpos, ypos) {
-      //   svg
-      //     .transition()
-      //     .duration(500)
-      //     .attr(
-      //       "transform",
-      //       "translate(" +
-      //         (width / 2 - xpos) +
-      //         "," +
-      //         (height / 2 - ypos) +
-      //         ")scale(" +
-      //         1 +
-      //         ")"
-      //     )
-      //     .on("end", function () {
-      //       zoomer.call(
-      //         zoom.transform,
-      //         d3.zoomIdentity
-      //           .translate(width / 2 - xpos, height / 2 - ypos)
-      //           .scale(1)
-      //       );
-      //     });
-      // }
 
       const tooltip = d3
         .select("#map")
@@ -132,28 +109,41 @@ export default {
 
       var defs = legend.append("defs");
 
+      //Slider on case rate
+      d3.select("#slider")
+        .attr("x", screen.width * (2 / 5))
+        .attr("width", 600)
+        .attr("height", 100);
+
       const path = d3.geoPath();
 
-      const list = [];
+      glob.list = [];
 
-      list.push(
+      glob.list.push(
         ...topo
-          .feature(shapefile_dat, shapefile_dat.objects.Visualisation_data)
-          .features.filter((e) => e.geometry && e.geometry.type)
+          .feature(glob.shape_data, glob.shape_data.objects.Visualisation_data)
+          .features.filter(function (d) {
+            if (
+              glob.range[0] <= d.properties.Case_rate * 100 &&
+              d.properties.Case_rate * 100 <= glob.range[1]
+            ) {
+              return d;
+            }
+          })
       );
 
-      // Color scheme for MSOA regions
+      // Color scheme setting
       const colorscale = d3.scaleSequential(d3.interpolateOrRd);
 
       const max_rate = d3.max(
-        list.map((row) => {
+        glob.list.map((row) => {
           return row.properties.Case_rate;
         })
       );
 
       const NA_cases = Number(
         d3.mean(
-          list.map((row) => {
+          glob.list.map((row) => {
             return row.properties.Cases;
           })
         )
@@ -161,21 +151,19 @@ export default {
 
       const NA_case_rate = Number(
         d3.mean(
-          list.map((row) => {
+          glob.list.map((row) => {
             return row.properties.Case_rate;
           })
         ) * 100
       ).toFixed(2);
 
-      //Slider on case rate
-      d3.select("#slider")
-        .attr("x", screen.width * (2 / 5))
-        .attr("width", 600)
-        .attr("height", 100);
-
       function mouseout() {
         tooltip.style("visibility", "hidden");
-        d3.select(this).style("stroke-width", 0.15);
+        if (d3.select(this).attr("class").includes("highlight")) {
+          d3.select(this).attr("class", "none");
+        } else {
+          d3.select(this).attr("class", "click-indicator");
+        }
       }
 
       function mousemove(e) {
@@ -185,7 +173,7 @@ export default {
       }
 
       function mouseover() {
-        d3.select(this).style("stroke-width", 2);
+        d3.select(this).attr("class", "highlight");
         tooltip
           .style("visibility", "visible")
           .html(
@@ -203,35 +191,24 @@ export default {
       }
 
       function clickaction() {
-        if (d3.select(this).attr("click-indicator") == false) {
-          d3.select(this).attr("click-indicator", true).on("mouseout", null);
+        if (d3.select(this).attr("class").includes("click-indicator")) {
+          d3.select(this).attr("class", "highlight");
         } else {
-          d3.select(this)
-            .attr("click-indicator", false)
-            .on("mouseout", mouseout);
+          d3.select(this).attr("class", "click-indicator");
         }
       }
 
       // Map data and tools
       svg
         .append("g")
-        .attr("class", "MSOA")
-        .attr("stroke", "#000")
-        .style("stroke-width", 0.15)
+        .attr("class", "none")
         .selectAll("path")
-        .data(list)
+        .data(glob.list)
         .join("path")
         .attr("vector-effect", "non-scaling-stroke")
         .attr("d", path)
         .attr("fill", (d) => {
-          if (
-            d.properties.Case_rate * 100 >= this.range[0] &&
-            d.properties.Case_rate * 100 <= this.range[1]
-          ) {
-            return colorscale(d.properties.Case_rate / max_rate);
-          } else {
-            return "none";
-          }
+          return colorscale(d.properties.Case_rate / max_rate);
         })
         .attr("code", (d) => d.properties.code)
         .attr("areaname", (d) => d.properties.areaName)
@@ -373,11 +350,15 @@ export default {
   data() {
     return {
       range: [0, 1.8],
-      MSOA: { visibility: true, color: "dark" },
     };
   },
+  watch: {
+    range() {
+      this.init();
+    },
+  },
   async mounted() {
-    this.init();
+    await this.init();
   },
 };
 </script>
@@ -424,5 +405,20 @@ a {
   font-family: Avenir;
   fill: #000;
   font-size: 9pt;
+}
+.click-indicator {
+  stroke-width: 2;
+  stroke: rgb(19, 122, 33);
+}
+.highlight {
+  stroke-width: 2;
+  stroke: #000;
+}
+.slider .range-slider-fill {
+  background-color: #ff9c00;
+}
+.none {
+  stroke-width: 0.06;
+  stroke: #000;
 }
 </style>
