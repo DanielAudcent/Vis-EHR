@@ -1,9 +1,14 @@
 <template>
   <div class="container-fluid">
     <div class="row row-eq-height">
-      <div class="col-3">LHS Panel <br /><br /></div>
+      <div class="col-3">
+        <br /><br />
+        <strong class="headers">LHS Panel</strong> <br /><br />
+        <div id="info-boxes"></div>
+      </div>
       <div class="col-6">
-        Map <br /><br />
+        <br /><br />
+        <strong class="headers">Map </strong><br /><br />
         <div id="map" style="z-index: 10"></div>
         <div id="map-legend" style="z-index: 1"></div>
         <div id="slider" style="z-index: 1">
@@ -19,7 +24,8 @@
         </div>
       </div>
       <div class="col-2">
-        Options <br /><br />
+        <br /><br />
+        <strong class="headers">Options </strong><br /><br />
         <div id="buttons" class="btn-group-vertical">
           <b-button
             id="button1"
@@ -65,6 +71,7 @@ export default {
       //Reset to default
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
+      d3.selectAll("#info-boxes > svg").remove();
 
       glob.width = 800;
       glob.height = 600;
@@ -90,6 +97,14 @@ export default {
       function zoomed({ transform }) {
         svg.attr("transform", transform);
       }
+
+      const infoboxes = d3
+        .select("#info-boxes")
+        .append("svg")
+        .attr("x", 10)
+        .attr("y", 75)
+        .attr("width", 300)
+        .attr("height", 600);
 
       const tooltip = d3
         .select("#map")
@@ -173,7 +188,6 @@ export default {
       }
 
       function mouseover() {
-        d3.select(this).attr("class", "highlight");
         tooltip
           .style("visibility", "visible")
           .html(
@@ -188,25 +202,46 @@ export default {
               "%" +
               d3.select(this).attr("NA_ind_pct")
           );
+        if (d3.select(this).attr("class").includes("none")) {
+          d3.select(this).attr("class", "highlight");
+        }
+      }
+
+      function remove_item(array, item) {
+        var iter = 0;
+        while (iter < array.length) {
+          if (array[iter] === item) {
+            array.splice(iter, 1);
+          } else {
+            ++iter;
+          }
+        }
+        return array;
       }
 
       function clickaction() {
         if (d3.select(this).attr("class").includes("click-indicator")) {
           d3.select(this).attr("class", "highlight");
+          remove_item(glob.areas_clicked, d3.select(this).attr("areaname"));
+          console.log(glob.areas_clicked);
         } else {
           d3.select(this).attr("class", "click-indicator");
+          glob.areas_clicked.push(d3.select(this).attr("areaname"));
+          console.log(glob.areas_clicked);
         }
       }
+
+      glob.areas_clicked = [];
 
       // Map data and tools
       svg
         .append("g")
-        .attr("class", "none")
         .selectAll("path")
         .data(glob.list)
         .join("path")
         .attr("vector-effect", "non-scaling-stroke")
         .attr("d", path)
+        .attr("class", "none")
         .attr("fill", (d) => {
           return colorscale(d.properties.Case_rate / max_rate);
         })
@@ -345,6 +380,54 @@ export default {
         .append("g")
         .attr("transform", "translate(0,70)")
         .call(axisLeg);
+
+      infoboxes
+        .append("rect")
+        .attr("x", 10)
+        .attr("y", 20)
+        .attr("class", "infobox_rect");
+      infoboxes
+        .append("text")
+        .text("infobox 1")
+        .attr("x", 20)
+        .attr("y", 40)
+        .attr("class", "infobox_text");
+
+      infoboxes
+        .append("rect")
+        .attr("x", 10)
+        .attr("y", 140)
+        .attr("class", "infobox_rect");
+      infoboxes
+        .append("text")
+        .text("infobox 2")
+        .attr("x", 20)
+        .attr("y", 160)
+        .attr("class", "infobox_text");
+
+      infoboxes
+        .append("rect")
+        .attr("x", 10)
+        .attr("y", 260)
+        .attr("class", "infobox_rect");
+      infoboxes
+        .append("text")
+        .text("infobox 3")
+        .attr("x", 20)
+        .attr("y", 280)
+        .attr("class", "infobox_text");
+
+      infoboxes
+        .append("rect")
+        .attr("x", 10)
+        .attr("y", 380)
+        .attr("class", "infobox_rect");
+      infoboxes
+        .append("text")
+        .text("infobox 4")
+        .attr("x", 20)
+        .attr("y", 400)
+        .attr("class", "infobox_text");
     },
   },
   data() {
@@ -376,6 +459,10 @@ li {
 }
 a {
   color: #42b983;
+}
+.headers {
+  font-size: 16pt;
+  fill: #000;
 }
 .centered {
   position: absolute;
@@ -420,5 +507,18 @@ a {
 .none {
   stroke-width: 0.06;
   stroke: #000;
+}
+.infobox_rect {
+  position: absolute;
+  height: 100px;
+  width: 280px;
+  fill: rgb(255, 255, 255);
+  stroke: #000;
+  stroke-width: 2;
+  visibility: visible;
+}
+.infobox_text {
+  fill: #000;
+  font-size: 12pt;
 }
 </style>
