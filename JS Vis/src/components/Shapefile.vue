@@ -35,7 +35,7 @@
             variant="outline-dark"
             size="lg"
           >
-            <span style="font-size: smaller">Reset zoom</span>
+            <span style="font-size: smaller">Reset</span>
           </b-button>
           <b-button
             id="button2"
@@ -71,7 +71,14 @@ export default {
       //Reset to default
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
-      d3.selectAll("#info-boxes > svg").remove();
+      glob.areanames_clicked = [];
+      glob.areacodes_clicked = [];
+      glob.areacases_clicked = [];
+      glob.areapop_clicked = [];
+      glob.areacaserate_clicked = [];
+      glob.areaNA_clicked = [];
+      glob.areaNApct_clicked = [];
+      glob.select_count = 0;
 
       glob.width = 800;
       glob.height = 600;
@@ -97,14 +104,6 @@ export default {
       function zoomed({ transform }) {
         svg.attr("transform", transform);
       }
-
-      const infoboxes = d3
-        .select("#info-boxes")
-        .append("svg")
-        .attr("x", 10)
-        .attr("y", 75)
-        .attr("width", 300)
-        .attr("height", 600);
 
       const tooltip = d3
         .select("#map")
@@ -222,16 +221,33 @@ export default {
       function clickaction() {
         if (d3.select(this).attr("class").includes("click-indicator")) {
           d3.select(this).attr("class", "highlight");
-          remove_item(glob.areas_clicked, d3.select(this).attr("areaname"));
-          console.log(glob.areas_clicked);
+          --glob.select_count;
+          remove_item(glob.areanames_clicked, d3.select(this).attr("areaname"));
+          remove_item(glob.areacodes_clicked, d3.select(this).attr("code"));
+          remove_item(glob.areacases_clicked, d3.select(this).attr("cases"));
+          remove_item(
+            glob.areacaserate_clicked,
+            d3.select(this).attr("case_rate")
+          );
+          remove_item(glob.areapop_clicked, d3.select(this).attr("population"));
+          remove_item(
+            glob.areaNApct_clicked,
+            d3.select(this).attr("NA_ind_pct")
+          );
+          remove_item(glob.areaNA_clicked, d3.select(this).attr("NA_ind"));
         } else {
           d3.select(this).attr("class", "click-indicator");
-          glob.areas_clicked.push(d3.select(this).attr("areaname"));
-          console.log(glob.areas_clicked);
+          ++glob.select_count;
+          glob.areanames_clicked.push(d3.select(this).attr("areaname"));
+          glob.areacodes_clicked.push(d3.select(this).attr("code"));
+          glob.areacases_clicked.push(d3.select(this).attr("cases"));
+          glob.areacaserate_clicked.push(d3.select(this).attr("case_rate"));
+          glob.areapop_clicked.push(d3.select(this).attr("population"));
+          glob.areaNApct_clicked.push(d3.select(this).attr("NA_ind_pct"));
+          glob.areaNA_clicked.push(d3.select(this).attr("NA_ind"));
         }
+        console.log(glob.areacases_clicked);
       }
-
-      glob.areas_clicked = [];
 
       // Map data and tools
       svg
@@ -380,68 +396,229 @@ export default {
         .append("g")
         .attr("transform", "translate(0,70)")
         .call(axisLeg);
+    },
+
+    redraw_infoboxes() {
+      d3.selectAll("#info-boxes > svg").remove();
+
+      const glob = this;
+
+      const infoboxes = d3
+        .select("#info-boxes")
+        .append("svg")
+        .attr("x", 10)
+        .attr("y", 75)
+        .attr("width", 300)
+        .attr("height", 600);
 
       infoboxes
         .append("rect")
         .attr("x", 10)
         .attr("y", 20)
-        .attr("class", "infobox_rect");
+        .attr("class", "infobox_rect")
+        .style("visibility", function () {
+          if (glob.select_count < 1) {
+            return "hidden";
+          }
+        });
       infoboxes
         .append("text")
-        .text("infobox 1")
         .attr("x", 20)
-        .attr("y", 40)
-        .attr("class", "infobox_text");
+        .attr("y", 50)
+        .attr("class", "infobox_title")
+        .style("visibility", function () {
+          if (glob.select_count < 1) {
+            return "hidden";
+          }
+        })
+        .html(glob.areanames_clicked[0]);
+      infoboxes
+        .append("text")
+        .attr("x", 20)
+        .attr("y", 70)
+        .attr("class", "infobox_text")
+        .style("visibility", function () {
+          if (glob.select_count < 1) {
+            return "hidden";
+          }
+        })
+        .html(
+          "<tspan " +
+            "x=" +
+            "35" +
+            " dy=" +
+            "25" +
+            "> Population: " +
+            glob.areapop_clicked[0] +
+            "</tspan>" +
+            "<tspan " +
+            "x=" +
+            "30" +
+            " dy=" +
+            "25" +
+            "> Cases: " +
+            glob.areacases_clicked[0] +
+            glob.areaNA_clicked[0] +
+            "</tspan>" +
+            "<tspan " +
+            "x=" +
+            "30" +
+            " dy=" +
+            "25" +
+            "> Case pct: " +
+            glob.areacaserate_clicked[0] +
+            "%" +
+            glob.areaNApct_clicked[0] +
+            "</tspan>"
+        );
 
       infoboxes
         .append("rect")
         .attr("x", 10)
-        .attr("y", 140)
-        .attr("class", "infobox_rect");
+        .attr("y", 190)
+        .attr("class", "infobox_rect")
+        .style("visibility", function () {
+          if (glob.select_count < 2) {
+            return "hidden";
+          }
+        });
       infoboxes
         .append("text")
-        .text("infobox 2")
         .attr("x", 20)
-        .attr("y", 160)
-        .attr("class", "infobox_text");
+        .attr("y", 220)
+        .attr("class", "infobox_title")
+        .style("visibility", function () {
+          if (glob.select_count < 2) {
+            return "hidden";
+          }
+        })
+        .html(glob.areanames_clicked[1]);
+      infoboxes
+        .append("text")
+        .attr("x", 20)
+        .attr("y", 240)
+        .attr("class", "infobox_text")
+        .style("visibility", function () {
+          if (glob.select_count < 2) {
+            return "hidden";
+          }
+        })
+        .html(
+          "<tspan " +
+            "x=" +
+            "35" +
+            " dy=" +
+            "25" +
+            "> Population: " +
+            glob.areapop_clicked[1] +
+            "</tspan>" +
+            "<tspan " +
+            "x=" +
+            "30" +
+            " dy=" +
+            "25" +
+            "> Cases: " +
+            glob.areacases_clicked[1] +
+            glob.areaNA_clicked[1] +
+            "</tspan>" +
+            "<tspan " +
+            "x=" +
+            "30" +
+            " dy=" +
+            "25" +
+            "> Case pct: " +
+            glob.areacaserate_clicked[1] +
+            "%" +
+            glob.areaNApct_clicked[1] +
+            "</tspan>"
+        );
 
       infoboxes
         .append("rect")
         .attr("x", 10)
-        .attr("y", 260)
-        .attr("class", "infobox_rect");
+        .attr("y", 360)
+        .attr("class", "infobox_rect")
+        .style("visibility", function () {
+          if (glob.select_count < 3) {
+            return "hidden";
+          }
+        });
       infoboxes
         .append("text")
-        .text("infobox 3")
         .attr("x", 20)
-        .attr("y", 280)
-        .attr("class", "infobox_text");
-
-      infoboxes
-        .append("rect")
-        .attr("x", 10)
-        .attr("y", 380)
-        .attr("class", "infobox_rect");
+        .attr("y", 390)
+        .attr("class", "infobox_title")
+        .style("visibility", function () {
+          if (glob.select_count < 3) {
+            return "hidden";
+          }
+        })
+        .html(glob.areanames_clicked[2]);
       infoboxes
         .append("text")
-        .text("infobox 4")
         .attr("x", 20)
-        .attr("y", 400)
-        .attr("class", "infobox_text");
+        .attr("y", 410)
+        .attr("class", "infobox_text")
+        .style("visibility", function () {
+          if (glob.select_count < 3) {
+            return "hidden";
+          }
+        })
+        .html(
+          "<tspan " +
+            "x=" +
+            "35" +
+            " dy=" +
+            "25" +
+            "> Population: " +
+            glob.areapop_clicked[2] +
+            "</tspan>" +
+            "<tspan " +
+            "x=" +
+            "30" +
+            " dy=" +
+            "25" +
+            "> Cases: " +
+            glob.areacases_clicked[2] +
+            glob.areaNA_clicked[2] +
+            "</tspan>" +
+            "<tspan " +
+            "x=" +
+            "30" +
+            " dy=" +
+            "25" +
+            "> Case pct: " +
+            glob.areacaserate_clicked[2] +
+            "%" +
+            glob.areaNApct_clicked[2] +
+            "</tspan>"
+        );
     },
   },
   data() {
     return {
       range: [0, 1.8],
+      areanames_clicked: [],
+      areacodes_clicked: [],
+      areacases_clicked: [],
+      areapop_clicked: [],
+      areacaserate_clicked: [],
+      areaNA_clicked: [],
+      areaNApct_clicked: [],
+      select_count: 0,
     };
   },
   watch: {
     range() {
       this.init();
     },
+    areanames_clicked() {
+      this.redraw_infoboxes();
+    },
   },
   async mounted() {
     await this.init();
+    this.redraw_infoboxes();
   },
 };
 </script>
@@ -510,15 +687,21 @@ a {
 }
 .infobox_rect {
   position: absolute;
-  height: 100px;
+  height: 150px;
   width: 280px;
   fill: rgb(255, 255, 255);
   stroke: #000;
   stroke-width: 2;
-  visibility: visible;
+}
+.infobox_title {
+  fill: rgb(0, 0, 0);
+  font-size: 16pt;
 }
 .infobox_text {
   fill: #000;
-  font-size: 12pt;
+  font-size: 14pt;
+}
+.hide {
+  visibility: hidden;
 }
 </style>
