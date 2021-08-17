@@ -21,12 +21,11 @@ export default {
 /* css code goes here */
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
-  /* font-size: 16pt; */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #0c0c0c;
   margin-top: 0px;
-  background-color: rgb(133, 149, 165);
+  background-color: rgb(101, 131, 167);
 }
 </style>

@@ -3,7 +3,7 @@
     <div class="row row-eq-height">
       <div class="col-3">
         <br /><br />
-        <strong class="headers">LHS Panel</strong> <br /><br />
+        <strong class="headers">Selection info</strong> <br /><br />
         <div id="info-boxes"></div>
       </div>
       <div class="col-6">
@@ -11,42 +11,71 @@
         <strong class="headers">Map </strong><br /><br />
         <div id="map" style="z-index: 10"></div>
         <div id="map-legend" style="z-index: 1"></div>
-        <div id="slider" style="z-index: 1">
+        <br />
+        <div id="slider" class="slider">
           <vue-range-slider
             v-model="range"
             class="centered"
             min="0.0"
             max="1.8"
             step="0.1"
-            dotSize="15"
+            dotSize="20"
             width="600px"
           ></vue-range-slider>
         </div>
       </div>
       <div class="col-2">
         <br /><br />
-        <strong class="headers">Options </strong><br /><br />
+        <strong class="headers" style="left: 100px">Options </strong
+        ><br /><br />
         <div id="buttons" class="btn-group-vertical">
           <b-button
             id="button1"
-            class="mb-3"
+            class="mb-3 mybtn"
             pill
             v-on:click="init()"
-            variant="outline-dark"
+            variant="light"
             size="lg"
           >
             <span style="font-size: smaller">Reset</span>
           </b-button>
           <b-button
             id="button2"
-            class="mb-3"
+            class="mb-3 mybtn"
             pill
-            variant="outline-dark"
+            variant="light"
             size="lg"
           >
-            <span style="font-size: smaller">Button2</span>
+            <span style="font-size: smaller">Center</span>
           </b-button>
+          <b-button-group>
+            <b-button
+              id="button3"
+              class="mb-3 mybtn2"
+              square
+              variant="light"
+              size="lg"
+              v-on:click="chart_toggle()"
+              :class="[show_bar ? 'active' : '']"
+            >
+              <span style="font-size: smaller">Bar</span>
+            </b-button>
+            <b-button
+              id="button3"
+              class="mb-3 mybtn2"
+              square
+              variant="light"
+              size="lg"
+              v-on:click="chart_toggle()"
+              :class="[!show_bar ? 'active' : '']"
+            >
+              <span style="font-size: smaller">Radial</span>
+            </b-button>
+          </b-button-group>
         </div>
+        <br /><br />
+        <strong class="headers">Chart comparison</strong> <br /><br />
+        <div id="chart"></div>
       </div>
     </div>
   </div>
@@ -71,14 +100,9 @@ export default {
       //Reset to default
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
-      glob.areanames_clicked = [];
-      glob.areacodes_clicked = [];
-      glob.areacases_clicked = [];
-      glob.areapop_clicked = [];
-      glob.areacaserate_clicked = [];
-      glob.areaNA_clicked = [];
-      glob.areaNApct_clicked = [];
+      d3.selectAll("#chart > svg").remove();
       glob.select_count = 0;
+      glob.selection_data = [];
 
       glob.width = 800;
       glob.height = 600;
@@ -127,7 +151,7 @@ export default {
       d3.select("#slider")
         .attr("x", screen.width * (2 / 5))
         .attr("width", 600)
-        .attr("height", 100);
+        .attr("height", 200);
 
       const path = d3.geoPath();
 
@@ -149,11 +173,7 @@ export default {
       // Color scheme setting
       const colorscale = d3.scaleSequential(d3.interpolateOrRd);
 
-      const max_rate = d3.max(
-        glob.list.map((row) => {
-          return row.properties.Case_rate;
-        })
-      );
+      const max_rate = 0.017455;
 
       const NA_cases = Number(
         d3.mean(
@@ -206,10 +226,10 @@ export default {
         }
       }
 
-      function remove_item(array, item) {
+      function remove_item(array, code) {
         var iter = 0;
         while (iter < array.length) {
-          if (array[iter] === item) {
+          if (array[iter][0].code === code) {
             array.splice(iter, 1);
           } else {
             ++iter;
@@ -219,34 +239,30 @@ export default {
       }
 
       function clickaction() {
+        const areaname = d3.select(this).attr("areaname");
+        const code = d3.select(this).attr("code");
+        const cases = d3.select(this).attr("cases");
+        const case_rate = d3.select(this).attr("case_rate");
+        const population = d3.select(this).attr("population");
+        const selection_info = [
+          {
+            areaname: areaname,
+            code: code,
+            cases: cases,
+            case_rate: case_rate,
+            population: population,
+          },
+        ];
         if (d3.select(this).attr("class").includes("click-indicator")) {
           d3.select(this).attr("class", "highlight");
+          remove_item(glob.selection_data, selection_info[0].code);
           --glob.select_count;
-          remove_item(glob.areanames_clicked, d3.select(this).attr("areaname"));
-          remove_item(glob.areacodes_clicked, d3.select(this).attr("code"));
-          remove_item(glob.areacases_clicked, d3.select(this).attr("cases"));
-          remove_item(
-            glob.areacaserate_clicked,
-            d3.select(this).attr("case_rate")
-          );
-          remove_item(glob.areapop_clicked, d3.select(this).attr("population"));
-          remove_item(
-            glob.areaNApct_clicked,
-            d3.select(this).attr("NA_ind_pct")
-          );
-          remove_item(glob.areaNA_clicked, d3.select(this).attr("NA_ind"));
         } else {
           d3.select(this).attr("class", "click-indicator");
+          glob.selection_data.push(selection_info);
           ++glob.select_count;
-          glob.areanames_clicked.push(d3.select(this).attr("areaname"));
-          glob.areacodes_clicked.push(d3.select(this).attr("code"));
-          glob.areacases_clicked.push(d3.select(this).attr("cases"));
-          glob.areacaserate_clicked.push(d3.select(this).attr("case_rate"));
-          glob.areapop_clicked.push(d3.select(this).attr("population"));
-          glob.areaNApct_clicked.push(d3.select(this).attr("NA_ind_pct"));
-          glob.areaNA_clicked.push(d3.select(this).attr("NA_ind"));
         }
-        console.log(glob.areacases_clicked);
+        // console.log(glob.selection_data);
       }
 
       // Map data and tools
@@ -431,7 +447,13 @@ export default {
             return "hidden";
           }
         })
-        .html(glob.areanames_clicked[0]);
+        .html(function () {
+          if (glob.select_count >= 1) {
+            return glob.selection_data[0][0].areaname;
+          } else {
+            return "";
+          }
+        });
       infoboxes
         .append("text")
         .attr("x", 20)
@@ -442,35 +464,39 @@ export default {
             return "hidden";
           }
         })
-        .html(
-          "<tspan " +
-            "x=" +
-            "35" +
-            " dy=" +
-            "25" +
-            "> Population: " +
-            glob.areapop_clicked[0] +
-            "</tspan>" +
-            "<tspan " +
-            "x=" +
-            "30" +
-            " dy=" +
-            "25" +
-            "> Cases: " +
-            glob.areacases_clicked[0] +
-            glob.areaNA_clicked[0] +
-            "</tspan>" +
-            "<tspan " +
-            "x=" +
-            "30" +
-            " dy=" +
-            "25" +
-            "> Case pct: " +
-            glob.areacaserate_clicked[0] +
-            "%" +
-            glob.areaNApct_clicked[0] +
-            "</tspan>"
-        );
+        .html(function () {
+          if (glob.select_count >= 1) {
+            return (
+              "<tspan " +
+              "x=" +
+              "35" +
+              " dy=" +
+              "25" +
+              "> Population: " +
+              glob.selection_data[0][0].population +
+              "</tspan>" +
+              "<tspan " +
+              "x=" +
+              "30" +
+              " dy=" +
+              "25" +
+              "> Cases: " +
+              glob.selection_data[0][0].cases +
+              "</tspan>" +
+              "<tspan " +
+              "x=" +
+              "30" +
+              " dy=" +
+              "25" +
+              "> Case pct: " +
+              glob.selection_data[0][0].case_rate +
+              "%" +
+              "</tspan>"
+            );
+          } else {
+            return "";
+          }
+        });
 
       infoboxes
         .append("rect")
@@ -492,7 +518,13 @@ export default {
             return "hidden";
           }
         })
-        .html(glob.areanames_clicked[1]);
+        .html(function () {
+          if (glob.select_count >= 2) {
+            return glob.selection_data[1][0].areaname;
+          } else {
+            return "";
+          }
+        });
       infoboxes
         .append("text")
         .attr("x", 20)
@@ -503,35 +535,39 @@ export default {
             return "hidden";
           }
         })
-        .html(
-          "<tspan " +
-            "x=" +
-            "35" +
-            " dy=" +
-            "25" +
-            "> Population: " +
-            glob.areapop_clicked[1] +
-            "</tspan>" +
-            "<tspan " +
-            "x=" +
-            "30" +
-            " dy=" +
-            "25" +
-            "> Cases: " +
-            glob.areacases_clicked[1] +
-            glob.areaNA_clicked[1] +
-            "</tspan>" +
-            "<tspan " +
-            "x=" +
-            "30" +
-            " dy=" +
-            "25" +
-            "> Case pct: " +
-            glob.areacaserate_clicked[1] +
-            "%" +
-            glob.areaNApct_clicked[1] +
-            "</tspan>"
-        );
+        .html(function () {
+          if (glob.select_count >= 2) {
+            return (
+              "<tspan " +
+              "x=" +
+              "35" +
+              " dy=" +
+              "25" +
+              "> Population: " +
+              glob.selection_data[1][0].population +
+              "</tspan>" +
+              "<tspan " +
+              "x=" +
+              "30" +
+              " dy=" +
+              "25" +
+              "> Cases: " +
+              glob.selection_data[1][0].cases +
+              "</tspan>" +
+              "<tspan " +
+              "x=" +
+              "30" +
+              " dy=" +
+              "25" +
+              "> Case pct: " +
+              glob.selection_data[1][0].case_rate +
+              "%" +
+              "</tspan>"
+            );
+          } else {
+            return "";
+          }
+        });
 
       infoboxes
         .append("rect")
@@ -553,7 +589,13 @@ export default {
             return "hidden";
           }
         })
-        .html(glob.areanames_clicked[2]);
+        .html(function () {
+          if (glob.select_count >= 3) {
+            return glob.selection_data[2][0].areaname;
+          } else {
+            return "";
+          }
+        });
       infoboxes
         .append("text")
         .attr("x", 20)
@@ -564,61 +606,159 @@ export default {
             return "hidden";
           }
         })
-        .html(
-          "<tspan " +
-            "x=" +
-            "35" +
-            " dy=" +
-            "25" +
-            "> Population: " +
-            glob.areapop_clicked[2] +
-            "</tspan>" +
-            "<tspan " +
-            "x=" +
-            "30" +
-            " dy=" +
-            "25" +
-            "> Cases: " +
-            glob.areacases_clicked[2] +
-            glob.areaNA_clicked[2] +
-            "</tspan>" +
-            "<tspan " +
-            "x=" +
-            "30" +
-            " dy=" +
-            "25" +
-            "> Case pct: " +
-            glob.areacaserate_clicked[2] +
-            "%" +
-            glob.areaNApct_clicked[2] +
-            "</tspan>"
-        );
+        .html(function () {
+          if (glob.select_count >= 3) {
+            return (
+              "<tspan " +
+              "x=" +
+              "35" +
+              " dy=" +
+              "25" +
+              "> Population: " +
+              glob.selection_data[2][0].population +
+              "</tspan>" +
+              "<tspan " +
+              "x=" +
+              "30" +
+              " dy=" +
+              "25" +
+              "> Cases: " +
+              glob.selection_data[2][0].cases +
+              "</tspan>" +
+              "<tspan " +
+              "x=" +
+              "30" +
+              " dy=" +
+              "25" +
+              "> Case pct: " +
+              glob.selection_data[2][0].case_rate +
+              "%" +
+              "</tspan>"
+            );
+          } else {
+            return "";
+          }
+        });
+    },
+    draw_bar() {
+      d3.selectAll("#chart > svg").remove();
+
+      const glob = this;
+
+      const bar = d3
+        .select("#chart")
+        .append("svg")
+        .attr("x", 0)
+        .attr("y", 20)
+        .attr("width", 330)
+        .attr("height", 450);
+
+      bar.append("rect").attr("x", 5).attr("y", 5).attr("class", "chart_bg");
+
+      var x_scale = d3.scaleBand().range([25, 285]).padding(0.6);
+      var y_scale = d3.scaleLinear().range([310, 30]);
+      var bar_g = bar
+        .append("g")
+        .attr("transform", "translate(" + 0 + "," + -30 + ")");
+
+      x_scale.domain(
+        glob.selection_data.map(function (d) {
+          return d[0].areaname;
+        })
+      );
+      y_scale.domain([
+        0,
+        d3.max(
+          glob.selection_data.map(function (d) {
+            return d[0].population;
+          })
+        ),
+      ]);
+
+      bar_g
+        .append("g")
+        .attr("transform", "translate(" + 25 + "," + 330 + ")")
+        .call(d3.axisBottom(x_scale))
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-1.8em")
+        .attr("dy", "-0.8em")
+        .attr("transform", "rotate(-90)");
+
+      bar_g
+        .append("g")
+        .attr("transform", "translate(" + 50 + "," + 20 + ")")
+        .call(d3.axisLeft(y_scale).ticks(10))
+        .append("text")
+        .attr("y", 6)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "end")
+        .text("Num. of Cases");
+
+      bar_g
+        .selectAll(".bar")
+        .data(glob.selection_data)
+        .enter()
+        .append("rect")
+        .attr("class", "bars")
+        .attr("transform", "translate(" + 25 + "," + 20 + ")")
+        .attr("x", function (d) {
+          return x_scale(d[0].areaname);
+        })
+        .attr("width", x_scale.bandwidth())
+        .attr("y", function () {
+          return y_scale(0);
+        })
+        .attr("height", function () {
+          return 310 - y_scale(0);
+        })
+        .transition()
+        .duration(800)
+        .attr("y", function (d) {
+          return y_scale(d[0].population);
+        })
+        .attr("height", function (d) {
+          return 310 - y_scale(d[0].population);
+        });
+    },
+    draw_radial() {
+      d3.selectAll("#chart > svg").remove();
+
+      // const glob = this;
+    },
+    chart_toggle() {
+      const glob = this;
+      glob.show_bar = !glob.show_bar;
+      if (glob.show_bar === true) {
+        this.draw_bar();
+      } else {
+        this.draw_radial();
+      }
     },
   },
   data() {
     return {
       range: [0, 1.8],
-      areanames_clicked: [],
-      areacodes_clicked: [],
-      areacases_clicked: [],
-      areapop_clicked: [],
-      areacaserate_clicked: [],
-      areaNA_clicked: [],
-      areaNApct_clicked: [],
       select_count: 0,
+      selection_data: [],
+      show_bar: true,
     };
   },
   watch: {
     range() {
       this.init();
     },
-    areanames_clicked() {
+    select_count() {
       this.redraw_infoboxes();
+      if (this.show_bar === true) {
+        this.draw_bar();
+      } else {
+        this.draw_radial();
+      }
     },
   },
   async mounted() {
     await this.init();
-    this.redraw_infoboxes();
   },
 };
 </script>
@@ -703,5 +843,30 @@ a {
 }
 .hide {
   visibility: hidden;
+}
+.mybtn {
+  border-color: #000 !important;
+  border-width: 2.5px !important;
+  width: 150px !important;
+  left: 30px;
+}
+.mybtn2 {
+  border-color: #000 !important;
+  border-width: 2.5px !important;
+  width: 100px !important;
+}
+.active {
+  background: rgba(33, 184, 207, 0.692) !important;
+}
+.chart_bg {
+  position: absolute;
+  height: 425px;
+  width: 320px;
+  fill: rgb(255, 255, 255);
+  stroke: #000;
+  stroke-width: 2.5;
+}
+.bars {
+  fill: rgb(101, 131, 167);
 }
 </style>
