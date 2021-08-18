@@ -69,12 +69,12 @@
               v-on:click="chart_toggle()"
               :class="[!show_bar ? 'active' : '']"
             >
-              <span style="font-size: smaller">Radial</span>
+              <span style="font-size: smaller">Radar</span>
             </b-button>
           </b-button-group>
         </div>
         <br /><br />
-        <strong class="headers">Chart comparison</strong> <br /><br />
+        <strong class="headers">Chart comparison</strong><br />
         <div id="chart"></div>
       </div>
     </div>
@@ -677,7 +677,7 @@ export default {
 
       bar_g
         .append("g")
-        .attr("transform", "translate(" + 25 + "," + 330 + ")")
+        .attr("transform", "translate(" + 25 + "," + 350 + ")")
         .call(d3.axisBottom(x_scale))
         .selectAll("text")
         .style("text-anchor", "end")
@@ -687,7 +687,7 @@ export default {
 
       bar_g
         .append("g")
-        .attr("transform", "translate(" + 50 + "," + 20 + ")")
+        .attr("transform", "translate(" + 50 + "," + 40 + ")")
         .call(d3.axisLeft(y_scale).ticks(10))
         .append("text")
         .attr("y", 6)
@@ -696,12 +696,19 @@ export default {
         .text("Num. of Cases");
 
       bar_g
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("transform", "translate(" + 160 + "," + 60 + ")")
+        .attr("class", "chart_title")
+        .text("Area population");
+
+      bar_g
         .selectAll(".bar")
         .data(glob.selection_data)
         .enter()
         .append("rect")
         .attr("class", "bars")
-        .attr("transform", "translate(" + 25 + "," + 20 + ")")
+        .attr("transform", "translate(" + 25 + "," + 40 + ")")
         .attr("x", function (d) {
           return x_scale(d[0].areaname);
         })
@@ -713,7 +720,7 @@ export default {
           return 310 - y_scale(0);
         })
         .transition()
-        .duration(800)
+        .duration(1000)
         .attr("y", function (d) {
           return y_scale(d[0].population);
         })
@@ -721,10 +728,279 @@ export default {
           return 310 - y_scale(d[0].population);
         });
     },
-    draw_radial() {
+    draw_radar() {
       d3.selectAll("#chart > svg").remove();
 
       // const glob = this;
+
+      const radial = d3
+        .select("#chart")
+        .append("svg")
+        .attr("x", 0)
+        .attr("y", 20)
+        .attr("width", 330)
+        .attr("height", 450);
+
+      radial.append("rect").attr("x", 5).attr("y", 5).attr("class", "chart_bg");
+
+      //dummy data
+      var data = [
+        [
+          //iPhone
+          { axis: "Battery Life", value: 0.22 },
+          { axis: "Brand", value: 0.28 },
+          { axis: "Contract Cost", value: 0.29 },
+          { axis: "Design And Quality", value: 0.17 },
+          { axis: "Have Internet Connectivity", value: 0.22 },
+          { axis: "Large Screen", value: 0.02 },
+          { axis: "Price Of Device", value: 0.21 },
+          { axis: "To Be A Smartphone", value: 0.5 },
+        ],
+        [
+          //Samsung
+          { axis: "Battery Life", value: 0.27 },
+          { axis: "Brand", value: 0.16 },
+          { axis: "Contract Cost", value: 0.35 },
+          { axis: "Design And Quality", value: 0.13 },
+          { axis: "Have Internet Connectivity", value: 0.2 },
+          { axis: "Large Screen", value: 0.13 },
+          { axis: "Price Of Device", value: 0.35 },
+          { axis: "To Be A Smartphone", value: 0.38 },
+        ],
+        [
+          //Nokia Smartphone
+          { axis: "Battery Life", value: 0.26 },
+          { axis: "Brand", value: 0.1 },
+          { axis: "Contract Cost", value: 0.3 },
+          { axis: "Design And Quality", value: 0.14 },
+          { axis: "Have Internet Connectivity", value: 0.22 },
+          { axis: "Large Screen", value: 0.04 },
+          { axis: "Price Of Device", value: 0.41 },
+          { axis: "To Be A Smartphone", value: 0.3 },
+        ],
+      ];
+
+      // Adapted from 'The Radar Chart Function' written by Nadieh Bremer (VisualCinnamon.com)
+      // Which was inspired by the code of alangrafu
+      // https://gist.github.com/nbremer/21746a9668ffdf6d8242#file-radarchart-js
+
+      var cfg = {
+        w: 300, //Width of the circle
+        h: 300, //Height of the circle
+        margin: { top: 5, right: 5, bottom: 5, left: 5 }, //The margins of the SVG
+        levels: 5, //How many levels or inner circles should there be drawn
+        maxValue: 0.5, //What is the value that the biggest circle will represent
+        labelFactor: 1.25, //How much farther than the radius of the outer circle should the labels be placed
+        wrapWidth: 60, //The number of pixels after which a label needs to be given a new line
+        opacityArea: 0.35, //The opacity of the area of the blob
+        dotRadius: 3, //The size of the colored circles of each blog
+        opacityCircles: 0.1, //The opacity of the circles of each blob
+        strokeWidth: 2, //The width of the stroke around each blob
+        roundStrokes: true, //If true the area and stroke will follow a round path (cardinal-closed)
+        color: d3.scaleOrdinal(d3.schemeCategory10), //Color function
+      };
+
+      //If the supplied maxValue is smaller than the actual one, replace by the max in the data
+      var maxValue = Math.max(
+        cfg.maxValue,
+        d3.max(data, function (i) {
+          return d3.max(
+            i.map(function (o) {
+              return o.value;
+            })
+          );
+        })
+      );
+
+      var allAxis = data[0].map(function (i) {
+          return i.axis;
+        }), //Names of axes
+        total = allAxis.length, // Number of axes
+        radius = Math.min(cfg.w / 2, cfg.h / 2), //Radius of the outermost circle
+        angleSlice = (Math.PI * 2) / total; //The width in radians of each "slice"
+
+      //Scale for the radius
+      var rScale = d3.scaleLinear().range([0, radius]).domain([0, maxValue]);
+
+      /////////////////////////////////////////////////////////
+      //////////// Create the container SVG and g /////////////
+      /////////////////////////////////////////////////////////
+
+      //Append a g element
+      var g = radial
+        .append("g")
+        .attr(
+          "transform",
+          "translate(" +
+            (cfg.w / 2 + cfg.margin.left + 10) +
+            "," +
+            (cfg.h / 2 + cfg.margin.top + 50) +
+            ")"
+        );
+
+      //Filter for the outside glow
+      var filter = g.append("defs").append("filter").attr("id", "glow");
+      filter
+        .append("feGaussianBlur")
+        .attr("stdDeviation", "3.5")
+        .attr("result", "coloredBlur");
+      var feMerge = filter.append("feMerge");
+      feMerge.append("feMergeNode").attr("in", "coloredBlur");
+      feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+      /////////////////////////////////////////////////////////
+      /////////////// Draw the Circular grid //////////////////
+      /////////////////////////////////////////////////////////
+
+      //Wrapper for the grid & axes
+      var axisGrid = g.append("g").attr("class", "axisWrapper");
+
+      //Draw the background circles
+      axisGrid
+        .selectAll(".levels")
+        .data(d3.range(1, cfg.levels + 1).reverse())
+        .enter()
+        .append("circle")
+        .attr("class", "gridCircle")
+        .attr("r", function (d) {
+          return (radius / cfg.levels) * d;
+        })
+        .style("fill", "#CDCDCD")
+        .style("stroke", "#CDCDCD")
+        .style("fill-opacity", cfg.opacityCircles)
+        .style("filter", "url(#glow)");
+
+      //Text indicating at what % each level is
+      axisGrid
+        .selectAll(".axisLabel")
+        .data(d3.range(1, cfg.levels + 1).reverse())
+        .enter()
+        .append("text")
+        .attr("class", "axisLabel")
+        .attr("x", 4)
+        .attr("y", function (d) {
+          return (-d * radius) / cfg.levels;
+        })
+        .attr("dy", "0.4em")
+        .style("font-size", "10px")
+        .attr("fill", "#737373")
+        .text(function (d) {
+          return d3.format(".2")((maxValue * d) / cfg.levels);
+        });
+
+      //Create the straight lines radiating outward from the center
+      var axis = axisGrid
+        .selectAll(".axis")
+        .data(allAxis)
+        .enter()
+        .append("g")
+        .attr("class", "axis2");
+
+      //Append the lines
+      axis
+        .append("line")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", function (i) {
+          return rScale(maxValue * 1.1) * Math.sin(angleSlice * i);
+        })
+        .attr("y2", function (i) {
+          return rScale(maxValue * 1.1) * -Math.cos(angleSlice * i);
+        })
+        .attr("class", "line")
+        .style("stroke", "white")
+        .style("stroke-width", "3px");
+
+      //Append the labels at each axis
+      axis
+        .append("text")
+        .attr("class", "legend")
+        .style("font-size", "11px")
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .attr("x", function (i) {
+          return rScale(maxValue * cfg.labelFactor) * Math.sin(angleSlice * i);
+        })
+        .attr("y", function (i) {
+          return rScale(maxValue * cfg.labelFactor) * -Math.cos(angleSlice * i);
+        })
+        .text(function (d) {
+          return d;
+        });
+
+      /////////////////////////////////////////////////////////
+      ///////////// Draw the radar chart blobs ////////////////
+      /////////////////////////////////////////////////////////
+
+      //The radial line function
+      var radarLine = d3
+        .lineRadial()
+        .curve(d3.curveBasisClosed)
+        .radius(function (d) {
+          return rScale(d.value);
+        })
+        .angle(function (i) {
+          return i * angleSlice;
+        });
+
+      if (cfg.roundStrokes) {
+        radarLine.curve(d3.curveCardinalClosed);
+      }
+
+      //Create a wrapper for the blobs
+      var blobWrapper = g
+        .selectAll(".radarWrapper")
+        .data(data)
+        .enter()
+        .append("g")
+        .attr("class", "radarWrapper");
+
+      //Append the backgrounds
+      blobWrapper
+        .append("path")
+        .attr("class", "radarArea")
+        .attr("d", function (d) {
+          return radarLine(d);
+        })
+        .style("fill", function (i) {
+          return cfg.color(i);
+        })
+        .style("fill-opacity", cfg.opacityArea);
+
+      //Create the outlines
+      blobWrapper
+        .append("path")
+        .attr("class", "radarStroke")
+        .attr("d", function (d) {
+          return radarLine(d);
+        })
+        .style("stroke-width", cfg.strokeWidth + "px")
+        .style("stroke", function (i) {
+          return cfg.color(i);
+        })
+        .style("fill", "none")
+        .style("filter", "url(#glow)");
+
+      //Append the circles
+      blobWrapper
+        .selectAll(".radarCircle")
+        .data(function (d) {
+          return d;
+        })
+        .enter()
+        .append("circle")
+        .attr("class", "radarCircle")
+        .attr("r", cfg.dotRadius)
+        .attr("cx", function (d, i) {
+          return rScale(d.value) * Math.sin(angleSlice * i);
+        })
+        .attr("cy", function (d, i) {
+          return rScale(d.value) * -Math.cos(angleSlice * i);
+        })
+        .style("fill", function (j) {
+          return cfg.color(j);
+        })
+        .style("fill-opacity", 0.8);
     },
     chart_toggle() {
       const glob = this;
@@ -732,7 +1008,7 @@ export default {
       if (glob.show_bar === true) {
         this.draw_bar();
       } else {
-        this.draw_radial();
+        this.draw_radar();
       }
     },
   },
@@ -753,7 +1029,7 @@ export default {
       if (this.show_bar === true) {
         this.draw_bar();
       } else {
-        this.draw_radial();
+        this.draw_radar();
       }
     },
   },
@@ -866,7 +1142,14 @@ a {
   stroke: #000;
   stroke-width: 2.5;
 }
+.chart_title {
+  text-decoration: underline;
+  font-weight: bold;
+  font-size: 12pt !important;
+}
 .bars {
-  fill: rgb(101, 131, 167);
+  fill: rgb(95, 82, 129);
+  stroke-width: 1.5;
+  stroke: #000;
 }
 </style>
