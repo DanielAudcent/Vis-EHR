@@ -9,8 +9,8 @@
       <div class="col-6">
         <br /><br />
         <strong class="headers">Map </strong><br /><br />
-        <div id="map" style="z-index: 10"></div>
-        <div id="map-legend" style="z-index: 1"></div>
+        <div id="map"></div>
+        <div id="map-legend"></div>
         <br />
         <div id="slider" class="slider">
           <vue-range-slider
@@ -100,7 +100,7 @@ export default {
       //Reset to default
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
-      d3.selectAll("#chart > svg").remove();
+      d3.selectAll("#chart > *").remove();
       glob.select_count = 0;
       glob.selection_data = [];
 
@@ -110,9 +110,10 @@ export default {
       const svg = d3
         .select("#map")
         .append("svg")
-        .attr("viewBox", [screen.width * (2 / 5), 0, glob.width, glob.height])
+        .attr("viewBox", [0, 0, glob.width, glob.height])
         .attr("stroke-linejoin", "round")
-        .attr("stroke-linecap", "round");
+        .attr("stroke-linecap", "round")
+        .attr("fill", "#000");
 
       svg.call(
         d3
@@ -125,8 +126,8 @@ export default {
           .on("zoom", zoomed)
       );
 
-      function zoomed({ transform }) {
-        svg.attr("transform", transform);
+      function zoomed(e) {
+        svg.attr("transform", e.transform);
       }
 
       const tooltip = d3
@@ -161,19 +162,16 @@ export default {
         ...topo
           .feature(glob.shape_data, glob.shape_data.objects.Visualisation_data)
           .features.filter(function (d) {
-            if (
-              glob.range[0] <= d.properties.Case_rate * 100 &&
-              d.properties.Case_rate * 100 <= glob.range[1]
-            ) {
-              return d;
-            }
+            return d;
           })
       );
 
       // Color scheme setting
-      const colorscale = d3.scaleSequential(d3.interpolateOrRd);
+      const colorscheme = d3.interpolatePlasma;
+      const colorscale = d3.scaleSequential(colorscheme).domain([1, 0]);
 
-      const max_rate = 0.017455;
+      // const max_rate = 0.017455;
+      const max_rate = glob.range[1] / 100;
 
       const NA_cases = Number(
         d3.mean(
@@ -262,7 +260,6 @@ export default {
           glob.selection_data.push(selection_info);
           ++glob.select_count;
         }
-        // console.log(glob.selection_data);
       }
 
       // Map data and tools
@@ -274,8 +271,11 @@ export default {
         .attr("vector-effect", "non-scaling-stroke")
         .attr("d", path)
         .attr("class", "none")
-        .attr("fill", (d) => {
-          return colorscale(d.properties.Case_rate / max_rate);
+        .attr("fill", function (d) {
+          return glob.range[0] <= d.properties.Case_rate * 100 &&
+            d.properties.Case_rate * 100 <= glob.range[1]
+            ? colorscale(d.properties.Case_rate / max_rate)
+            : "rgb(141, 168, 201)";
         })
         .attr("code", (d) => d.properties.code)
         .attr("areaname", (d) => d.properties.areaName)
@@ -337,7 +337,14 @@ export default {
       // Add Legend
       var colorscale_linear = d3
         .scaleLinear()
-        .domain([0.0, 0.35, 0.7, 1.05, 1.4, 1.75]);
+        .domain([
+          Number(0.0).toFixed(2),
+          Number(0.35).toFixed(2),
+          Number(0.7).toFixed(2),
+          Number(1.05).toFixed(2),
+          Number(1.4).toFixed(2),
+          Number(1.75).toFixed(2),
+        ]);
 
       var linearGradient = defs
         .append("linearGradient")
@@ -354,27 +361,27 @@ export default {
         .data([
           {
             offset: "0%",
-            color: d3.interpolateOrRd(0),
+            color: colorscheme(1),
           },
           {
             offset: "20%",
-            color: d3.interpolateOrRd(0.2),
+            color: colorscheme(0.8),
           },
           {
             offset: "40%",
-            color: d3.interpolateOrRd(0.4),
+            color: colorscheme(0.6),
           },
           {
             offset: "60%",
-            color: d3.interpolateOrRd(0.6),
+            color: colorscheme(0.4),
           },
           {
             offset: "80%",
-            color: d3.interpolateOrRd(0.8),
+            color: colorscheme(0.2),
           },
           {
             offset: "100%",
-            color: d3.interpolateOrRd(1),
+            color: colorscheme(0),
           },
         ])
         .enter()
@@ -1088,7 +1095,7 @@ a {
 }
 .click-indicator {
   stroke-width: 2;
-  stroke: rgb(19, 122, 33);
+  stroke: rgb(0, 0, 0);
 }
 .highlight {
   stroke-width: 2;
