@@ -39,15 +39,7 @@
           >
             <span style="font-size: smaller">Reset</span>
           </b-button>
-          <b-button
-            id="button2"
-            class="mb-3 mybtn"
-            pill
-            variant="light"
-            size="lg"
-          >
-            <span style="font-size: smaller">Center</span>
-          </b-button>
+          <strong class="headers2">Chart type</strong>
           <b-button-group>
             <b-button
               id="button3"
@@ -72,6 +64,14 @@
               <span style="font-size: smaller">Radar</span>
             </b-button>
           </b-button-group>
+          <strong class="headers2">Colour Scheme</strong>
+          <b-form-select
+            v-model="col_select"
+            :options="col_options"
+            class="mb-3 mybtn3"
+            size="lg"
+          >
+          </b-form-select>
         </div>
         <br /><br />
         <strong class="headers">Chart comparison</strong><br />
@@ -166,8 +166,8 @@ export default {
           })
       );
 
-      // Color scheme setting
-      const colorscheme = d3.interpolatePlasma;
+      // Color scheme settings
+      const colorscheme = glob.col_select;
       const colorscale = d3.scaleSequential(colorscheme).domain([1, 0]);
 
       // const max_rate = 0.017455;
@@ -1025,10 +1025,34 @@ export default {
       select_count: 0,
       selection_data: [],
       show_bar: true,
+      col_select: d3.interpolatePlasma,
+      col_options: [
+        { value: d3.interpolatePlasma, text: "Plasma (default)" },
+        { value: d3.interpolateCividis, text: "Cividis" },
+        { value: d3.interpolateViridis, text: "Viridis" },
+        { value: d3.interpolateWarm, text: "Warm" },
+        {
+          value: d3
+            .scaleLinear()
+            .domain([0, 0.25, 0.5, 0.75, 1])
+            .range(["#601A4A", "#EE442F", "#CCBE9F", "#E0DCD3", "#ABC3C9"]),
+          text: "Deut/Prot friendly",
+        },
+        {
+          value: d3
+            .scaleLinear()
+            .domain([0, 0.25, 0.5, 0.75, 1])
+            .range(["Blue", "Purple", "Red", "Orange", "Yellow"]),
+          text: "Trit friendly",
+        },
+      ],
     };
   },
   watch: {
     range() {
+      this.init();
+    },
+    col_select() {
       this.init();
     },
     select_count() {
@@ -1062,6 +1086,10 @@ a {
 }
 .headers {
   font-size: 16pt;
+  fill: #000;
+}
+.headers2 {
+  font-size: 12pt;
   fill: #000;
 }
 .centered {
@@ -1137,6 +1165,10 @@ a {
   border-color: #000 !important;
   border-width: 2.5px !important;
   width: 100px !important;
+}
+.mybtn3 {
+  border-color: #000 !important;
+  border-width: 2.5px !important;
 }
 .active {
   background: rgba(33, 184, 207, 0.692) !important;
