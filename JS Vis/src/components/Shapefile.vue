@@ -738,7 +738,7 @@ export default {
     draw_radar() {
       d3.selectAll("#chart > svg").remove();
 
-      // const glob = this;
+      const glob = this;
 
       const radial = d3
         .select("#chart")
@@ -750,62 +750,123 @@ export default {
 
       radial.append("rect").attr("x", 5).attr("y", 5).attr("class", "chart_bg");
 
-      //dummy data
-      var data = [
+      var default_data = [
         [
-          //iPhone
-          { axis: "Battery Life", value: 0.22 },
-          { axis: "Brand", value: 0.28 },
-          { axis: "Contract Cost", value: 0.29 },
-          { axis: "Design And Quality", value: 0.17 },
-          { axis: "Have Internet Connectivity", value: 0.22 },
-          { axis: "Large Screen", value: 0.02 },
-          { axis: "Price Of Device", value: 0.21 },
-          { axis: "To Be A Smartphone", value: 0.5 },
-        ],
-        [
-          //Samsung
-          { axis: "Battery Life", value: 0.27 },
-          { axis: "Brand", value: 0.16 },
-          { axis: "Contract Cost", value: 0.35 },
-          { axis: "Design And Quality", value: 0.13 },
-          { axis: "Have Internet Connectivity", value: 0.2 },
-          { axis: "Large Screen", value: 0.13 },
-          { axis: "Price Of Device", value: 0.35 },
-          { axis: "To Be A Smartphone", value: 0.38 },
-        ],
-        [
-          //Nokia Smartphone
-          { axis: "Battery Life", value: 0.26 },
-          { axis: "Brand", value: 0.1 },
-          { axis: "Contract Cost", value: 0.3 },
-          { axis: "Design And Quality", value: 0.14 },
-          { axis: "Have Internet Connectivity", value: 0.22 },
-          { axis: "Large Screen", value: 0.04 },
-          { axis: "Price Of Device", value: 0.41 },
-          { axis: "To Be A Smartphone", value: 0.3 },
+          //Selection 1
+          { axis: "Population", value: 0 },
+          { axis: "Case rate", value: 0 },
+          { axis: "Cases", value: 0 },
         ],
       ];
 
+      var data = [];
+
+      // If no items selected show default chart, otherwise plot
+      if (glob.select_count === 0) {
+        data = default_data;
+      } else {
+        var max_pop = Number(
+          d3.max(
+            glob.selection_data.map((element) => {
+              return element[0].population;
+            })
+          )
+        ).toFixed(2);
+
+        var max_case_rate = Number(
+          d3.max(
+            glob.selection_data.map((element) => {
+              return element[0].case_rate;
+            })
+          )
+        ).toFixed(2);
+
+        var max_cases = Number(
+          d3.max(
+            glob.selection_data.map((element) => {
+              return element[0].cases;
+            })
+          )
+        ).toFixed(2);
+
+        for (let i of glob.selection_data) {
+          data.push([
+            {
+              axis: "Population",
+              value: Number(i[0].population).toFixed(2) / max_pop,
+            },
+            {
+              axis: "Case rate",
+              value: Number(i[0].case_rate).toFixed(2) / max_case_rate,
+            },
+            {
+              axis: "Number of cases",
+              value: Number(i[0].cases).toFixed(2) / max_cases,
+            },
+          ]);
+        }
+      }
+
       // Adapted from 'The Radar Chart Function' written by Nadieh Bremer (VisualCinnamon.com)
       // Which was inspired by the code of alangrafu
+      // Date: 18th August 2021
       // https://gist.github.com/nbremer/21746a9668ffdf6d8242#file-radarchart-js
 
       var cfg = {
-        w: 300, //Width of the circle
-        h: 300, //Height of the circle
+        w: 200, //Width of the circle
+        h: 200, //Height of the circle
         margin: { top: 5, right: 5, bottom: 5, left: 5 }, //The margins of the SVG
         levels: 5, //How many levels or inner circles should there be drawn
-        maxValue: 0.5, //What is the value that the biggest circle will represent
+        maxValue: 1, //What is the value that the biggest circle will represent
         labelFactor: 1.25, //How much farther than the radius of the outer circle should the labels be placed
         wrapWidth: 60, //The number of pixels after which a label needs to be given a new line
         opacityArea: 0.35, //The opacity of the area of the blob
-        dotRadius: 3, //The size of the colored circles of each blog
+        dotRadius: 2, //The size of the colored circles of each blog
         opacityCircles: 0.1, //The opacity of the circles of each blob
         strokeWidth: 2, //The width of the stroke around each blob
         roundStrokes: true, //If true the area and stroke will follow a round path (cardinal-closed)
-        color: d3.scaleOrdinal(d3.schemeCategory10), //Color function
+        // color: d3.scaleOrdinal().range(["#EDC951", "#CC333F", "#00A0B0","Black"]), //Color function
+        color: d3.scaleOrdinal(d3.schemeSet2), //Color function
       };
+
+      //Taken from http://bl.ocks.org/mbostock/7555321
+      //Date: 23rd August 2021
+      //Wraps SVG text
+      function wrap(text, width) {
+        text.each(function () {
+          var text = d3.select(this),
+            words = text.text().split(/\s+/).reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 1.4, // ems
+            y = text.attr("y"),
+            x = text.attr("x"),
+            dy = parseFloat(text.attr("dy")),
+            tspan = text
+              .text(null)
+              .append("tspan")
+              .attr("x", x)
+              .attr("y", y)
+              .attr("dy", dy + "em");
+
+          while ((word = words.pop())) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+              line.pop();
+              tspan.text(line.join(" "));
+              line = [word];
+              tspan = text
+                .append("tspan")
+                .attr("x", x)
+                .attr("y", y)
+                .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                .text(word);
+            }
+          }
+        });
+      }
 
       //If the supplied maxValue is smaller than the actual one, replace by the max in the data
       var maxValue = Math.max(
@@ -829,17 +890,13 @@ export default {
       //Scale for the radius
       var rScale = d3.scaleLinear().range([0, radius]).domain([0, maxValue]);
 
-      /////////////////////////////////////////////////////////
-      //////////// Create the container SVG and g /////////////
-      /////////////////////////////////////////////////////////
-
       //Append a g element
       var g = radial
         .append("g")
         .attr(
           "transform",
           "translate(" +
-            (cfg.w / 2 + cfg.margin.left + 10) +
+            (cfg.w / 2 + cfg.margin.left + 60) +
             "," +
             (cfg.h / 2 + cfg.margin.top + 50) +
             ")"
@@ -855,14 +912,10 @@ export default {
       feMerge.append("feMergeNode").attr("in", "coloredBlur");
       feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
-      /////////////////////////////////////////////////////////
-      /////////////// Draw the Circular grid //////////////////
-      /////////////////////////////////////////////////////////
-
-      //Wrapper for the grid & axes
+      //Wrapper for the circular grid & axes
       var axisGrid = g.append("g").attr("class", "axisWrapper");
 
-      //Draw the background circles
+      //Draw the background circle levels
       axisGrid
         .selectAll(".levels")
         .data(d3.range(1, cfg.levels + 1).reverse())
@@ -877,7 +930,7 @@ export default {
         .style("fill-opacity", cfg.opacityCircles)
         .style("filter", "url(#glow)");
 
-      //Text indicating at what % each level is
+      //Text indicating at what value / % each level is
       axisGrid
         .selectAll(".axisLabel")
         .data(d3.range(1, cfg.levels + 1).reverse())
@@ -908,15 +961,15 @@ export default {
         .append("line")
         .attr("x1", 0)
         .attr("y1", 0)
-        .attr("x2", function (i) {
-          return rScale(maxValue * 1.1) * Math.sin(angleSlice * i);
+        .attr("x2", function (d, i) {
+          return Math.round(rScale(maxValue * 1.1) * Math.sin(angleSlice * i));
         })
-        .attr("y2", function (i) {
-          return rScale(maxValue * 1.1) * -Math.cos(angleSlice * i);
+        .attr("y2", function (d, i) {
+          return Math.round(rScale(maxValue * 1.1) * -Math.cos(angleSlice * i));
         })
         .attr("class", "line")
-        .style("stroke", "white")
-        .style("stroke-width", "3px");
+        .style("stroke", "#C6C6C6")
+        .style("stroke-width", "2px");
 
       //Append the labels at each axis
       axis
@@ -925,28 +978,25 @@ export default {
         .style("font-size", "11px")
         .attr("text-anchor", "middle")
         .attr("dy", "0.35em")
-        .attr("x", function (i) {
+        .attr("x", function (d, i) {
           return rScale(maxValue * cfg.labelFactor) * Math.sin(angleSlice * i);
         })
-        .attr("y", function (i) {
+        .attr("y", function (d, i) {
           return rScale(maxValue * cfg.labelFactor) * -Math.cos(angleSlice * i);
         })
         .text(function (d) {
           return d;
-        });
+        })
+        .call(wrap, cfg.wrapWidth);
 
-      /////////////////////////////////////////////////////////
-      ///////////// Draw the radar chart blobs ////////////////
-      /////////////////////////////////////////////////////////
-
-      //The radial line function
+      // The radial line function
       var radarLine = d3
         .lineRadial()
         .curve(d3.curveBasisClosed)
         .radius(function (d) {
           return rScale(d.value);
         })
-        .angle(function (i) {
+        .angle(function (d, i) {
           return i * angleSlice;
         });
 
@@ -969,10 +1019,26 @@ export default {
         .attr("d", function (d) {
           return radarLine(d);
         })
-        .style("fill", function (i) {
+        .style("fill", function (d, i) {
           return cfg.color(i);
         })
-        .style("fill-opacity", cfg.opacityArea);
+        .style("fill-opacity", cfg.opacityArea)
+        .on("mouseover", function () {
+          //Dim all blobs
+          d3.selectAll(".radarArea")
+            .transition()
+            .duration(150)
+            .style("fill-opacity", 0.1);
+          //Bring back the hovered over blob
+          d3.select(this).transition().duration(150).style("fill-opacity", 0.8);
+        })
+        .on("mouseout", function () {
+          //Bring back all blobs
+          d3.selectAll(".radarArea")
+            .transition()
+            .duration(150)
+            .style("fill-opacity", cfg.opacityArea);
+        });
 
       //Create the outlines
       blobWrapper
@@ -982,7 +1048,7 @@ export default {
           return radarLine(d);
         })
         .style("stroke-width", cfg.strokeWidth + "px")
-        .style("stroke", function (i) {
+        .style("stroke", function (d, i) {
           return cfg.color(i);
         })
         .style("fill", "none")
@@ -1004,7 +1070,7 @@ export default {
         .attr("cy", function (d, i) {
           return rScale(d.value) * -Math.cos(angleSlice * i);
         })
-        .style("fill", function (j) {
+        .style("fill", function (d, i, j) {
           return cfg.color(j);
         })
         .style("fill-opacity", 0.8);
