@@ -1,17 +1,17 @@
 <template>
   <div class="container-fluid">
     <div class="row row-eq-height">
-      <div class="col-3">
-        <br /><br />
+      <div class="col-4">
+        <br />
         <strong class="headers">Selection info</strong> <br /><br />
         <div id="info-boxes"></div>
       </div>
-      <div class="col-6">
-        <br /><br />
+      <div class="col-5">
+        <br />
         <strong class="headers">Map </strong><br /><br />
         <div id="map"></div>
-        <div id="map-legend"></div>
         <br />
+        <div id="map-legend"></div>
         <div id="slider" class="slider">
           <vue-range-slider
             v-model="range"
@@ -24,8 +24,8 @@
           ></vue-range-slider>
         </div>
       </div>
-      <div class="col-2">
-        <br /><br />
+      <div class="col-3">
+        <br />
         <strong class="headers" style="left: 100px">Options </strong
         ><br /><br />
         <div id="buttons" class="btn-group-vertical">
@@ -97,15 +97,25 @@ export default {
 
       glob.shape_data = shapefile_dat;
 
-      //Reset to default
+      //Reset to default settings / view
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
       d3.selectAll("#chart > *").remove();
       glob.select_count = 0;
       glob.selection_data = [];
 
-      glob.width = 800;
+      glob.width = 650;
       glob.height = 600;
+
+      var legend = d3
+        .select("#map-legend")
+        .append("svg")
+        .attr("x", screen.width * (2 / 5))
+        .attr("y", 1000)
+        .attr("height", 120)
+        .attr("width", 600);
+
+      var defs = legend.append("defs");
 
       const svg = d3
         .select("#map")
@@ -122,7 +132,7 @@ export default {
             [0, 0],
             [glob.width, glob.height],
           ])
-          .scaleExtent([1, 10])
+          .scaleExtent([1, 4])
           .on("zoom", zoomed)
       );
 
@@ -137,16 +147,6 @@ export default {
         .style("visibility", "hidden")
         .style("z-index", "10")
         .attr("class", "tooltip");
-
-      var legend = d3
-        .select("#map-legend")
-        .append("svg")
-        .attr("x", screen.width * (2 / 5))
-        .attr("y", 700)
-        .attr("height", 100)
-        .attr("width", 600);
-
-      var defs = legend.append("defs");
 
       //Slider on case rate
       d3.select("#slider")
@@ -393,13 +393,13 @@ export default {
           return d.color;
         });
 
-      var xLeg = d3.scaleLinear().domain([0, 1.75]).range([10, 590]);
+      var xLeg = d3.scaleLinear().domain([0, 1.75]).range([10, 560]);
 
       var axisLeg = d3.axisBottom(xLeg).tickValues(colorscale_linear.domain());
 
       legend
         .append("rect")
-        .attr("x", 0)
+        .attr("x", -30)
         .attr("y", 50)
         .attr("width", 600)
         .attr("height", 20)
@@ -430,14 +430,53 @@ export default {
         .select("#info-boxes")
         .append("svg")
         .attr("x", 10)
-        .attr("y", 75)
-        .attr("width", 300)
+        .attr("y", 65)
+        .attr("width", 450)
         .attr("height", 600);
+
+      //Taken from http://bl.ocks.org/mbostock/7555321
+      //Date: 23rd August 2021
+      //Wraps SVG text
+      function wrap(text, width) {
+        text.each(function () {
+          var text = d3.select(this),
+            words = text.text().split(/\s+/).reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 1.4, // ems
+            y = text.attr("y"),
+            x = text.attr("x"),
+            dy = parseFloat(text.attr("dy")),
+            tspan = text
+              .text(null)
+              .append("tspan")
+              .attr("x", x)
+              .attr("y", y)
+              .attr("dy", dy + "em");
+
+          while ((word = words.pop())) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+              line.pop();
+              tspan.text(line.join(" "));
+              line = [word];
+              tspan = text
+                .append("tspan")
+                .attr("x", x)
+                .attr("y", y)
+                .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                .text(word);
+            }
+          }
+        });
+      }
 
       infoboxes
         .append("rect")
         .attr("x", 10)
-        .attr("y", 20)
+        .attr("y", 0)
         .attr("class", "infobox_rect")
         .style("visibility", function () {
           if (glob.select_count < 1) {
@@ -446,25 +485,29 @@ export default {
         });
       infoboxes
         .append("text")
-        .attr("x", 20)
-        .attr("y", 50)
+        .attr("x", 190)
+        .attr("y", 20)
+        .attr("dy", 0)
         .attr("class", "infobox_title")
         .style("visibility", function () {
           if (glob.select_count < 1) {
             return "hidden";
           }
         })
+        .style("text-anchor", "middle")
         .html(function () {
           if (glob.select_count >= 1) {
             return glob.selection_data[0][0].areaname;
           } else {
             return "";
           }
-        });
+        })
+        .call(wrap, 320);
+
       infoboxes
         .append("text")
         .attr("x", 20)
-        .attr("y", 70)
+        .attr("y", 40)
         .attr("class", "infobox_text")
         .style("visibility", function () {
           if (glob.select_count < 1) {
@@ -476,7 +519,7 @@ export default {
             return (
               "<tspan " +
               "x=" +
-              "35" +
+              "30" +
               " dy=" +
               "25" +
               "> Population: " +
@@ -484,17 +527,17 @@ export default {
               "</tspan>" +
               "<tspan " +
               "x=" +
-              "30" +
-              " dy=" +
               "25" +
+              " dy=" +
+              "20" +
               "> Cases: " +
               glob.selection_data[0][0].cases +
               "</tspan>" +
               "<tspan " +
               "x=" +
-              "30" +
-              " dy=" +
               "25" +
+              " dy=" +
+              "20" +
               "> Case pct: " +
               glob.selection_data[0][0].case_rate +
               "%" +
@@ -508,7 +551,7 @@ export default {
       infoboxes
         .append("rect")
         .attr("x", 10)
-        .attr("y", 190)
+        .attr("y", 125)
         .attr("class", "infobox_rect")
         .style("visibility", function () {
           if (glob.select_count < 2) {
@@ -517,25 +560,29 @@ export default {
         });
       infoboxes
         .append("text")
-        .attr("x", 20)
-        .attr("y", 220)
+        .attr("x", 190)
+        .attr("y", 145)
+        .attr("dy", 0)
         .attr("class", "infobox_title")
         .style("visibility", function () {
           if (glob.select_count < 2) {
             return "hidden";
           }
         })
+        .style("text-anchor", "middle")
         .html(function () {
           if (glob.select_count >= 2) {
             return glob.selection_data[1][0].areaname;
           } else {
             return "";
           }
-        });
+        })
+        .call(wrap, 320);
+
       infoboxes
         .append("text")
         .attr("x", 20)
-        .attr("y", 240)
+        .attr("y", 165)
         .attr("class", "infobox_text")
         .style("visibility", function () {
           if (glob.select_count < 2) {
@@ -547,7 +594,7 @@ export default {
             return (
               "<tspan " +
               "x=" +
-              "35" +
+              "30" +
               " dy=" +
               "25" +
               "> Population: " +
@@ -555,17 +602,17 @@ export default {
               "</tspan>" +
               "<tspan " +
               "x=" +
-              "30" +
-              " dy=" +
               "25" +
+              " dy=" +
+              "20" +
               "> Cases: " +
               glob.selection_data[1][0].cases +
               "</tspan>" +
               "<tspan " +
               "x=" +
-              "30" +
-              " dy=" +
               "25" +
+              " dy=" +
+              "20" +
               "> Case pct: " +
               glob.selection_data[1][0].case_rate +
               "%" +
@@ -579,7 +626,7 @@ export default {
       infoboxes
         .append("rect")
         .attr("x", 10)
-        .attr("y", 360)
+        .attr("y", 250)
         .attr("class", "infobox_rect")
         .style("visibility", function () {
           if (glob.select_count < 3) {
@@ -588,25 +635,29 @@ export default {
         });
       infoboxes
         .append("text")
-        .attr("x", 20)
-        .attr("y", 390)
+        .attr("x", 190)
+        .attr("y", 270)
+        .attr("dy", 0)
         .attr("class", "infobox_title")
         .style("visibility", function () {
           if (glob.select_count < 3) {
             return "hidden";
           }
         })
+        .style("text-anchor", "middle")
         .html(function () {
           if (glob.select_count >= 3) {
             return glob.selection_data[2][0].areaname;
           } else {
             return "";
           }
-        });
+        })
+        .call(wrap, 320);
+
       infoboxes
         .append("text")
         .attr("x", 20)
-        .attr("y", 410)
+        .attr("y", 290)
         .attr("class", "infobox_text")
         .style("visibility", function () {
           if (glob.select_count < 3) {
@@ -618,7 +669,7 @@ export default {
             return (
               "<tspan " +
               "x=" +
-              "35" +
+              "30" +
               " dy=" +
               "25" +
               "> Population: " +
@@ -626,17 +677,17 @@ export default {
               "</tspan>" +
               "<tspan " +
               "x=" +
-              "30" +
-              " dy=" +
               "25" +
+              " dy=" +
+              "20" +
               "> Cases: " +
               glob.selection_data[2][0].cases +
               "</tspan>" +
               "<tspan " +
               "x=" +
-              "30" +
-              " dy=" +
               "25" +
+              " dy=" +
+              "20" +
               "> Case pct: " +
               glob.selection_data[2][0].case_rate +
               "%" +
@@ -677,7 +728,7 @@ export default {
         0,
         d3.max(
           glob.selection_data.map(function (d) {
-            return d[0].population;
+            return Number(d[0].population);
           })
         ),
       ]);
@@ -687,6 +738,7 @@ export default {
         .attr("transform", "translate(" + 25 + "," + 350 + ")")
         .call(d3.axisBottom(x_scale))
         .selectAll("text")
+        .attr("class", "bar_axis_text")
         .style("text-anchor", "end")
         .attr("dx", "-1.8em")
         .attr("dy", "-0.8em")
@@ -765,45 +817,41 @@ export default {
       if (glob.select_count === 0) {
         data = default_data;
       } else {
-        var max_pop = Number(
-          d3.max(
-            glob.selection_data.map((element) => {
-              return element[0].population;
-            })
-          )
-        ).toFixed(2);
+        var max_pop = d3.max(
+          glob.selection_data.map((element) => {
+            return Number(element[0].population);
+          })
+        );
 
-        var max_case_rate = Number(
-          d3.max(
-            glob.selection_data.map((element) => {
-              return element[0].case_rate;
-            })
-          )
-        ).toFixed(2);
+        var max_case_rate = d3.max(
+          glob.selection_data.map((element) => {
+            return Number(element[0].case_rate);
+          })
+        );
 
-        var max_cases = Number(
-          d3.max(
-            glob.selection_data.map((element) => {
-              return element[0].cases;
-            })
-          )
-        ).toFixed(2);
+        var max_cases = d3.max(
+          glob.selection_data.map((element) => {
+            return Number(element[0].cases);
+          })
+        );
 
         for (let i of glob.selection_data) {
           data.push([
             {
               axis: "Population",
-              value: Number(i[0].population).toFixed(2) / max_pop,
+              value: Number(i[0].population) / max_pop,
             },
             {
               axis: "Case rate",
-              value: Number(i[0].case_rate).toFixed(2) / max_case_rate,
+              value: Number(i[0].case_rate) / max_case_rate,
             },
             {
-              axis: "Number of cases",
-              value: Number(i[0].cases).toFixed(2) / max_cases,
+              axis: "Cases",
+              value: Number(i[0].cases) / max_cases,
             },
           ]);
+          console.log(max_cases);
+          console.log(data);
         }
       }
 
@@ -813,11 +861,11 @@ export default {
       // https://gist.github.com/nbremer/21746a9668ffdf6d8242#file-radarchart-js
 
       var cfg = {
-        w: 200, //Width of the circle
-        h: 200, //Height of the circle
+        w: 250, //Width of the circle
+        h: 250, //Height of the circle
         margin: { top: 5, right: 5, bottom: 5, left: 5 }, //The margins of the SVG
         levels: 5, //How many levels or inner circles should there be drawn
-        maxValue: 1, //What is the value that the biggest circle will represent
+        maxValue: Number(1), //What is the value that the biggest circle will represent
         labelFactor: 1.25, //How much farther than the radius of the outer circle should the labels be placed
         wrapWidth: 60, //The number of pixels after which a label needs to be given a new line
         opacityArea: 0.35, //The opacity of the area of the blob
@@ -868,17 +916,17 @@ export default {
         });
       }
 
-      //If the supplied maxValue is smaller than the actual one, replace by the max in the data
-      var maxValue = Math.max(
-        cfg.maxValue,
-        d3.max(data, function (i) {
-          return d3.max(
-            i.map(function (o) {
-              return o.value;
-            })
-          );
-        })
-      );
+      // If the supplied maxValue is smaller than the actual one, replace by the max in the data
+      // var maxValue = Math.max(
+      //   cfg.maxValue,
+      //   d3.max(data, function (i) {
+      //     return d3.max(
+      //       i.map(function (o) {
+      //         return o.value;
+      //       })
+      //     );
+      //   })
+      // );
 
       var allAxis = data[0].map(function (i) {
           return i.axis;
@@ -888,7 +936,10 @@ export default {
         angleSlice = (Math.PI * 2) / total; //The width in radians of each "slice"
 
       //Scale for the radius
-      var rScale = d3.scaleLinear().range([0, radius]).domain([0, maxValue]);
+      var rScale = d3
+        .scaleLinear()
+        .range([0, radius])
+        .domain([0, cfg.maxValue]);
 
       //Append a g element
       var g = radial
@@ -896,7 +947,7 @@ export default {
         .attr(
           "transform",
           "translate(" +
-            (cfg.w / 2 + cfg.margin.left + 60) +
+            (cfg.w / 2 + cfg.margin.left + 33) +
             "," +
             (cfg.h / 2 + cfg.margin.top + 50) +
             ")"
@@ -942,10 +993,10 @@ export default {
           return (-d * radius) / cfg.levels;
         })
         .attr("dy", "0.4em")
-        .style("font-size", "10px")
+        .style("font-size", "11px")
         .attr("fill", "#737373")
         .text(function (d) {
-          return d3.format(".2")((maxValue * d) / cfg.levels);
+          return d3.format(".2")((cfg.maxValue * d) / cfg.levels);
         });
 
       //Create the straight lines radiating outward from the center
@@ -962,10 +1013,14 @@ export default {
         .attr("x1", 0)
         .attr("y1", 0)
         .attr("x2", function (d, i) {
-          return Math.round(rScale(maxValue * 1.1) * Math.sin(angleSlice * i));
+          return Math.round(
+            rScale(cfg.maxValue * 1.1) * Math.sin(angleSlice * i)
+          );
         })
         .attr("y2", function (d, i) {
-          return Math.round(rScale(maxValue * 1.1) * -Math.cos(angleSlice * i));
+          return Math.round(
+            rScale(cfg.maxValue * 1.1) * -Math.cos(angleSlice * i)
+          );
         })
         .attr("class", "line")
         .style("stroke", "#C6C6C6")
@@ -979,10 +1034,14 @@ export default {
         .attr("text-anchor", "middle")
         .attr("dy", "0.35em")
         .attr("x", function (d, i) {
-          return rScale(maxValue * cfg.labelFactor) * Math.sin(angleSlice * i);
+          return (
+            rScale(cfg.maxValue * cfg.labelFactor) * Math.sin(angleSlice * i)
+          );
         })
         .attr("y", function (d, i) {
-          return rScale(maxValue * cfg.labelFactor) * -Math.cos(angleSlice * i);
+          return (
+            rScale(cfg.maxValue * cfg.labelFactor) * -Math.cos(angleSlice * i)
+          );
         })
         .text(function (d) {
           return d;
@@ -1123,10 +1182,12 @@ export default {
     },
     select_count() {
       this.redraw_infoboxes();
-      if (this.show_bar === true) {
-        this.draw_bar();
-      } else {
-        this.draw_radar();
+      if (this.select_count > 0) {
+        if (this.show_bar === true) {
+          this.draw_bar();
+        } else {
+          this.draw_radar();
+        }
       }
     },
   },
@@ -1151,7 +1212,7 @@ a {
   color: #42b983;
 }
 .headers {
-  font-size: 16pt;
+  font-size: 18pt;
   fill: #000;
 }
 .headers2 {
@@ -1204,19 +1265,20 @@ a {
 }
 .infobox_rect {
   position: absolute;
-  height: 150px;
-  width: 280px;
+  height: 115px;
+  width: 360px;
   fill: rgb(255, 255, 255);
   stroke: #000;
   stroke-width: 2;
 }
 .infobox_title {
   fill: rgb(0, 0, 0);
-  font-size: 16pt;
+  font-size: 12pt;
+  font-weight: bold;
 }
 .infobox_text {
   fill: #000;
-  font-size: 14pt;
+  font-size: 11pt;
 }
 .hide {
   visibility: hidden;
@@ -1256,5 +1318,8 @@ a {
   fill: rgb(95, 82, 129);
   stroke-width: 1.5;
   stroke: #000;
+}
+.bar_axis_text {
+  font-size: 7pt !important;
 }
 </style>
