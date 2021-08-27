@@ -1,4 +1,4 @@
-*.html
+Python Vis/*.html
 *.mov
 .DS_Store
 Visualisation_data_test.json
