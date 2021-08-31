@@ -5,6 +5,7 @@
         <br />
         <strong class="headers">Selection info</strong> <br /><br />
         <div id="info-boxes"></div>
+        <div id="cr-hist"></div>
       </div>
       <div class="col-5">
         <br />
@@ -33,7 +34,10 @@
             id="button1"
             class="mb-3 mybtn"
             pill
-            v-on:click="init()"
+            v-on:click="
+              init();
+              draw_hist();
+            "
             variant="light"
             size="lg"
           >
@@ -101,11 +105,19 @@ export default {
       d3.selectAll("#map > svg").remove();
       d3.selectAll("#map-legend > svg").remove();
       d3.selectAll("#chart > *").remove();
+      d3.selectAll("#info-boxes > svg").remove();
       glob.select_count = 0;
       glob.selection_data = [];
 
       glob.width = 650;
       glob.height = 600;
+
+      d3.select("#info-boxes")
+        .append("svg")
+        .attr("x", 10)
+        .attr("y", 65)
+        .attr("width", 380)
+        .attr("height", 380);
 
       var legend = d3
         .select("#map-legend")
@@ -431,8 +443,8 @@ export default {
         .append("svg")
         .attr("x", 10)
         .attr("y", 65)
-        .attr("width", 450)
-        .attr("height", 600);
+        .attr("width", 380)
+        .attr("height", 380);
 
       //Taken from http://bl.ocks.org/mbostock/7555321
       //Date: 23rd August 2021
@@ -477,6 +489,7 @@ export default {
         .append("rect")
         .attr("x", 10)
         .attr("y", 0)
+        .attr("rx", 20)
         .attr("class", "infobox_rect")
         .style("visibility", function () {
           if (glob.select_count < 1) {
@@ -552,6 +565,7 @@ export default {
         .append("rect")
         .attr("x", 10)
         .attr("y", 125)
+        .attr("rx", 20)
         .attr("class", "infobox_rect")
         .style("visibility", function () {
           if (glob.select_count < 2) {
@@ -627,6 +641,7 @@ export default {
         .append("rect")
         .attr("x", 10)
         .attr("y", 250)
+        .attr("rx", 20)
         .attr("class", "infobox_rect")
         .style("visibility", function () {
           if (glob.select_count < 3) {
@@ -696,6 +711,113 @@ export default {
           } else {
             return "";
           }
+        });
+    },
+    draw_hist() {
+      d3.selectAll("#cr-hist > svg").remove();
+
+      const glob = this;
+
+      // get data column containing case rates within user specified range
+      var data = glob.list.map((row) => {
+        if (
+          glob.range[0] <= row.properties.Case_rate * 100 &&
+          row.properties.Case_rate * 100 <= glob.range[1]
+        ) {
+          return +(row.properties.Case_rate * 100).toFixed(2);
+        }
+      });
+
+      const hist_svg = d3
+        .select("#cr-hist")
+        .append("svg")
+        .attr("x", 0)
+        .attr("y", 20)
+        .attr("width", 380)
+        .attr("height", 400);
+
+      hist_svg
+        .append("rect")
+        .attr("x", 10)
+        .attr("y", 5)
+        .attr("class", "hist_bg");
+
+      var x = d3
+        .scaleLinear()
+        .domain([0, d3.max(data)])
+        .range([0, 300]);
+
+      hist_svg
+        .append("g")
+        .attr("transform", "translate(" + 50 + "," + 250 + ")")
+        .call(d3.axisBottom(x));
+
+      var hist = d3
+        .histogram()
+        .value(function (d) {
+          return d;
+        })
+        .domain(x.domain())
+        .thresholds(x.ticks(8));
+
+      var bins = hist(data);
+
+      var y = d3
+        .scaleLinear()
+        .range([225, 30])
+        .domain([
+          0,
+          d3.max(bins, function (d) {
+            return d.length;
+          }),
+        ]);
+
+      hist_svg
+        .append("g")
+        .attr("transform", "translate(" + 50 + "," + 25 + ")")
+        .call(d3.axisLeft(y));
+
+      hist_svg
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("transform", "translate(" + 270 + "," + 35 + ")")
+        .attr("class", "chart_title")
+        .text("Case rate distribution");
+
+      var bar = hist_svg
+        .selectAll(".bar")
+        .data(bins)
+        .enter()
+        .append("g")
+        .attr("class", "bars")
+        .attr("transform", function (d) {
+          return "translate(" + x(d.x0) + "," + y(d.length) + ")";
+        });
+
+      bar
+        .append("rect")
+        .attr("x", 1)
+        .attr("transform", function () {
+          return "translate(" + 50 + "," + 23 + ")";
+        })
+        .attr("width", function (d) {
+          return x(d.x1) - x(d.x0) - 1;
+        })
+        .attr("height", 0)
+        .transition()
+        .duration(2000)
+        .attr("height", function (d) {
+          return 225 - y(d.length);
+        });
+
+      bar
+        .append("text")
+        .attr("class", "hist_bar_text")
+        .attr("transform", function () {
+          return "translate(" + 60 + "," + 15 + ")";
+        })
+        .text(function (d) {
+          return d.length;
         });
     },
     draw_bar() {
@@ -1150,7 +1272,7 @@ export default {
       select_count: 0,
       selection_data: [],
       show_bar: true,
-      col_select: d3.interpolatePlasma,
+      col_select: null,
       col_options: [
         { value: d3.interpolatePlasma, text: "Plasma (default)" },
         { value: d3.interpolateCividis, text: "Cividis" },
@@ -1175,10 +1297,11 @@ export default {
   },
   watch: {
     range() {
-      this.init();
+      this.$nextTick(() => this.init());
+      this.draw_hist();
     },
     col_select() {
-      this.init();
+      this.$nextTick(() => this.init());
     },
     select_count() {
       this.redraw_infoboxes();
@@ -1192,7 +1315,9 @@ export default {
     },
   },
   async mounted() {
+    this.col_select = d3.interpolatePlasma;
     await this.init();
+    this.draw_hist();
   },
 };
 </script>
@@ -1315,11 +1440,22 @@ a {
   font-size: 12pt !important;
 }
 .bars {
-  fill: rgb(95, 82, 129);
+  fill: #69b3a2;
   stroke-width: 1.5;
   stroke: #000;
 }
 .bar_axis_text {
   font-size: 7pt !important;
+}
+.hist_bg {
+  position: absolute;
+  height: 280px;
+  width: 360px;
+  fill: rgb(255, 255, 255);
+  stroke: #000;
+  stroke-width: 2.5;
+}
+.hist_bar_text {
+  font-size: 8pt !important;
 }
 </style>
