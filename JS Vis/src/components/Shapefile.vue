@@ -35,6 +35,7 @@
             class="mb-3 mybtn"
             pill
             v-on:click="
+              circles_range = [100, 101];
               init();
               draw_hist();
             "
@@ -102,7 +103,7 @@ export default {
       glob.shape_data = shapefile_dat;
 
       //Reset to default settings / view
-      d3.selectAll("#map > svg").remove();
+      d3.selectAll("#map > *").remove();
       d3.selectAll("#map-legend > svg").remove();
       d3.selectAll("#chart > *").remove();
       d3.selectAll("#info-boxes > svg").remove();
@@ -144,7 +145,7 @@ export default {
             [0, 0],
             [glob.width, glob.height],
           ])
-          .scaleExtent([1, 4])
+          .scaleExtent([1, 10])
           .on("zoom", zoomed)
       );
 
@@ -296,7 +297,7 @@ export default {
         .attr("case_rate", (d) =>
           Number(d.properties.Case_rate * 100).toFixed(2)
         )
-        .attr("click-indicator", false)
+        // .attr("click-indicator", false)
         .on("mouseover", mouseover)
         .on("mousemove", mousemove)
         .on("mouseout", mouseout)
@@ -343,6 +344,34 @@ export default {
               "<path d='M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z'/>" +
               "</svg>"
             );
+          }
+        });
+
+      svg
+        .selectAll("circles")
+        .data(glob.list)
+        .enter()
+        .append("circle")
+        .attr("cx", function (d) {
+          return path.centroid(d)[0];
+        })
+        .attr("cy", function (d) {
+          return path.centroid(d)[1];
+        })
+        .attr("r", function () {
+          if (glob.circles_count > 200) {
+            return "0.25px";
+          } else {
+            return "0.45px";
+          }
+        })
+        .attr("class", "circle")
+        .attr("class", function (d) {
+          const val = d.properties.Case_rate * 100;
+          if (val > glob.circles_range[0] && val < glob.circles_range[1]) {
+            return "circle";
+          } else {
+            return "circle_hide";
           }
         });
 
@@ -718,14 +747,9 @@ export default {
 
       const glob = this;
 
-      // get data column containing case rates within user specified range
+      // get data column containing case rates
       var data = glob.list.map((row) => {
-        if (
-          glob.range[0] <= row.properties.Case_rate * 100 &&
-          row.properties.Case_rate * 100 <= glob.range[1]
-        ) {
-          return +(row.properties.Case_rate * 100).toFixed(2);
-        }
+        return +(row.properties.Case_rate * 100).toFixed(2);
       });
 
       const hist_svg = d3
@@ -789,7 +813,6 @@ export default {
         .data(bins)
         .enter()
         .append("g")
-        .attr("class", "bars")
         .attr("transform", function (d) {
           return "translate(" + x(d.x0) + "," + y(d.length) + ")";
         });
@@ -804,6 +827,35 @@ export default {
           return x(d.x1) - x(d.x0) - 1;
         })
         .attr("height", 0)
+        .attr("class", function (d) {
+          if (d3.min(d) >= glob.range[0]) {
+            return "bars";
+          } else if (d3.min(d) < glob.range[0] && d3.max(d) > glob.range[0]) {
+            return "bars_faded";
+          } else {
+            return "bars_blank";
+          }
+        })
+        .on("click", function () {
+          if (d3.select(this).attr("class").includes("click-indicator-bar")) {
+            glob.circles_range = [100, 101];
+            glob.circles_count = 0;
+            d3.select(this).classed("click-indicator-bar", false);
+            glob.init();
+          } else {
+            glob.circles_range = [
+              d3.min(d3.select(this).datum()),
+              d3.max(d3.select(this).datum()),
+            ];
+            glob.circles_count = d3.select(this).datum().length;
+            d3.selectAll(".click-indicator-bar").classed(
+              "click-indicator-bar",
+              false
+            );
+            d3.select(this).classed("click-indicator-bar", true);
+            glob.init();
+          }
+        })
         .transition()
         .duration(2000)
         .attr("height", function (d) {
@@ -814,7 +866,7 @@ export default {
         .append("text")
         .attr("class", "hist_bar_text")
         .attr("transform", function () {
-          return "translate(" + 60 + "," + 15 + ")";
+          return "translate(" + 65 + "," + 15 + ")";
         })
         .text(function (d) {
           return d.length;
@@ -972,8 +1024,6 @@ export default {
               value: Number(i[0].cases) / max_cases,
             },
           ]);
-          console.log(max_cases);
-          console.log(data);
         }
       }
 
@@ -1269,6 +1319,7 @@ export default {
   data() {
     return {
       range: [0, 1.8],
+      circles_range: [100, 101],
       select_count: 0,
       selection_data: [],
       show_bar: true,
@@ -1377,9 +1428,20 @@ a {
   stroke-width: 2;
   stroke: rgb(0, 0, 0);
 }
+.click-indicator-bar {
+  stroke-width: 3 !important;
+  stroke: rgb(0, 0, 0);
+}
 .highlight {
   stroke-width: 2;
   stroke: #000;
+}
+.circle {
+  visibility: visible;
+  fill: rgb(1, 65, 1);
+}
+.circle_hide {
+  visibility: hidden;
 }
 .slider .range-slider-fill {
   background-color: #ff9c00;
@@ -1404,9 +1466,6 @@ a {
 .infobox_text {
   fill: #000;
   font-size: 11pt;
-}
-.hide {
-  visibility: hidden;
 }
 .mybtn {
   border-color: #000 !important;
@@ -1441,7 +1500,17 @@ a {
 }
 .bars {
   fill: #69b3a2;
-  stroke-width: 1.5;
+  stroke-width: 1;
+  stroke: #000;
+}
+.bars_faded {
+  fill: #69b3a25b;
+  stroke-width: 1;
+  stroke: #000;
+}
+.bars_blank {
+  fill: #69b3a200;
+  stroke-width: 1;
   stroke: #000;
 }
 .bar_axis_text {
@@ -1457,5 +1526,7 @@ a {
 }
 .hist_bar_text {
   font-size: 8pt !important;
+  font-weight: bold;
+  text-anchor: middle;
 }
 </style>
