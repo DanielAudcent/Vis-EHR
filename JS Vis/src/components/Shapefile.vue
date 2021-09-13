@@ -16,12 +16,11 @@
         <div id="slider" class="slider">
           <vue-range-slider
             v-model="range"
-            class="centered"
-            min="0.0"
-            max="1.8"
-            step="0.1"
-            dotSize="20"
-            width="600px"
+            :min="0.0"
+            :max="1.8"
+            :step="0.1"
+            :dotSize="20"
+            width="550px"
           ></vue-range-slider>
         </div>
       </div>
@@ -125,8 +124,8 @@ export default {
         .append("svg")
         .attr("x", screen.width * (2 / 5))
         .attr("y", 1000)
-        .attr("height", 120)
-        .attr("width", 600);
+        .attr("height", 100)
+        .attr("width", 570);
 
       var defs = legend.append("defs");
 
@@ -165,7 +164,7 @@ export default {
       d3.select("#slider")
         .attr("x", screen.width * (2 / 5))
         .attr("width", 600)
-        .attr("height", 200);
+        .attr("height", 120);
 
       const path = d3.geoPath();
 
@@ -434,16 +433,17 @@ export default {
           return d.color;
         });
 
-      var xLeg = d3.scaleLinear().domain([0, 1.75]).range([10, 560]);
+      var xLeg = d3.scaleLinear().domain([0, 1.75]).range([10, 540]);
 
       var axisLeg = d3.axisBottom(xLeg).tickValues(colorscale_linear.domain());
 
       legend
         .append("rect")
-        .attr("x", -30)
+        .attr("x", 0)
         .attr("y", 50)
-        .attr("width", 600)
+        .attr("width", 550)
         .attr("height", 20)
+        .attr("rx", 20)
         .style("fill", "url(#linear-gradient)");
 
       legend
@@ -1323,7 +1323,7 @@ export default {
       select_count: 0,
       selection_data: [],
       show_bar: true,
-      col_select: null,
+      col_select: d3.interpolatePlasma,
       col_options: [
         { value: d3.interpolatePlasma, text: "Plasma (default)" },
         { value: d3.interpolateCividis, text: "Cividis" },
@@ -1347,8 +1347,8 @@ export default {
     };
   },
   watch: {
-    range() {
-      this.$nextTick(() => this.init());
+    async range() {
+      await this.init();
       this.draw_hist();
     },
     col_select() {
@@ -1366,7 +1366,6 @@ export default {
     },
   },
   async mounted() {
-    this.col_select = d3.interpolatePlasma;
     await this.init();
     this.draw_hist();
   },
