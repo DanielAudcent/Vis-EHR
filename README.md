@@ -13,7 +13,7 @@ Link: https://forms.office.com/r/RpkgqB5S9h
 The choropleth map has a built-in functionality for the user to zoom in (Double left mouse click or mouse wheel) and out (mouse wheel), as well as panning (drag mouse cursor) which allows the user to make the smaller areas within England, Wales and Scotland more visible. 
 
 #### Tooltip:
-By hovering the mouse cursor over an area on the choropleth map, the user can view a summary of the information available on the chosen area such as name, population count, number of cases and case rate. A carat symbol (e.g ▲ or ▼) next to the case count and case percent values represents whether the value is above or below the average value across all area within England, Wales and Scotland, whereas a hyphen-minus (-) indicates that the value is equivalent to the average.
+By hovering the mouse cursor over an area on the choropleth map, the user can view a summary of the information available on the chosen area such as name, population count, number of cases and case rate. A caret symbol (e.g ▲ or ▼) next to the case count and case percent values represents whether the value is above or below the average value across all area within England, Wales and Scotland, whereas a hyphen-minus (-) indicates that the value is equivalent to the average.
 
 #### Selection options:
 This visualisation tool enables the user to select multiple areas through a mouse click, bringing up more detailed information on each area selected in the 'Selection info' panel, whilst also building a chart within the 'Chart comparison' area. This provides the user with an easy way to compare the properties of multiple areas selected through their preferred method. The selection of each area can be undone by clicking the same area again on the map.
