@@ -4,9 +4,6 @@ MSc Dissertation project - Interactive geospatial visualisation of COVID-related
 The repository shall be used as a version control during the implementation stage of this MSc Dissertation project.
 This project will be submitted in partial fulfillment of the conditions for the award of the degree: MSc Data Science.
 
-##
-Application URL: https://da-uk-geovis.netlify.app/
-
 ## Case study
 Link: https://forms.office.com/r/RpkgqB5S9h
 
